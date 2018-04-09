@@ -1,6 +1,6 @@
 # pkgj
 
-[![Travis CI Build Status][img_travis]][pkgj_travis] [![Downloads][img_downloads]][pkgj_downloads] [![Release][img_latest]][pkgj_latest] [![License][img_license]][pkgj_license]
+[![Travis CI Build Status][img_travis]][pkgj_travis] [![License][img_license]][pkgj_license]
 
 让你可以在psvita上直接下载NoNpDRM游戏。
 
@@ -23,7 +23,7 @@ Current limitations:
 
 # Download
 
-在这里下载最新的vpk安装包 [vpk file here][https://github.com/guch8017/pkgj/releases].
+在这里下载最新的vpk安装包 [https://github.com/guch8017/pkgj/releases].
 
 # Setup instructions
 
