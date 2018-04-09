@@ -33,25 +33,25 @@ typedef struct
 } MenuEntry;
 
 static const MenuEntry menu_entries[] = {
-        {MenuSearch, "Search...", 0},
-        {MenuSearchClear, PKGI_UTF8_CLEAR " clear", 0},
+        {MenuSearch, "檢索...", 0},
+        {MenuSearchClear, PKGI_UTF8_CLEAR " 清除", 0},
 
-        {MenuText, "Sort by:", 0},
-        {MenuSort, "Title", SortByTitle},
-        {MenuSort, "Region", SortByRegion},
-        {MenuSort, "Name", SortByName},
-        {MenuSort, "Size", SortBySize},
+        {MenuText, "檢索由:", 0},
+        {MenuSort, "標題", SortByTitle},
+        {MenuSort, "地區", SortByRegion},
+        {MenuSort, "名字", SortByName},
+        {MenuSort, "大小", SortBySize},
 
-        {MenuText, "Regions:", 0},
-        {MenuFilter, "Asia", DbFilterRegionASA},
-        {MenuFilter, "Europe", DbFilterRegionEUR},
-        {MenuFilter, "Japan", DbFilterRegionJPN},
-        {MenuFilter, "USA", DbFilterRegionUSA},
+        {MenuText, "區域:", 0},
+        {MenuFilter, "亞洲", DbFilterRegionASA},
+        {MenuFilter, "歐洲", DbFilterRegionEUR},
+        {MenuFilter, "日本", DbFilterRegionJPN},
+        {MenuFilter, "美國", DbFilterRegionUSA},
 
-        {MenuRefresh, "Refresh games", 1},
-        {MenuRefresh, "Refresh updates", 2},
-        {MenuRefresh, "Refresh DLCs", 4},
-        {MenuRefresh, "Refresh PSX games", 8},
+        {MenuRefresh, "刷新遊戲列表", 1},
+        {MenuRefresh, "刷新更新列表", 2},
+        {MenuRefresh, "刷新DLC列表", 4},
+        {MenuRefresh, "刷新PSX遊戲列表", 8},
 };
 
 int pkgi_menu_is_open(void)

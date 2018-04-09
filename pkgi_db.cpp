@@ -223,14 +223,14 @@ int pkgi_db_update(
         pkgi_http* http = pkgi_http_get(update_url, NULL, 0);
         if (!http)
         {
-            pkgi_snprintf(error, error_size, "failed to download list");
+            pkgi_snprintf(error, error_size, "下載列表失敗");
             return 0;
         }
 
         int64_t length;
         if (!pkgi_http_response_length(http, &length))
         {
-            pkgi_snprintf(error, error_size, "failed to download list");
+            pkgi_snprintf(error, error_size, "下載列表失敗");
             return 0;
         }
 
@@ -239,8 +239,8 @@ int pkgi_db_update(
             pkgi_snprintf(
                     error,
                     sizeof(error_size),
-                    "list is too large... check for newer pkgi "
-                    "version!");
+                    "列表過大 "
+                    "請嘗試新版本!");
             return 0;
         }
 
@@ -263,7 +263,7 @@ int pkgi_db_update(
             else if (read < 0)
             {
                 pkgi_snprintf(
-                        error, sizeof(error_size), "HTTP error 0x%08x", read);
+                        error, sizeof(error_size), "HTTP 錯誤 0x%08x", read);
                 db_size = 0;
                 break;
             }
@@ -275,7 +275,7 @@ int pkgi_db_update(
             pkgi_snprintf(
                     error,
                     sizeof(error_size),
-                    "list is empty... check for newer pkgi version!");
+                    "列表是空的,請檢查新版本!");
         }
 
         pkgi_http_close(http);
@@ -290,7 +290,7 @@ int pkgi_db_update(
         pkgi_snprintf(
                 error,
                 error_size,
-                "ERROR: pkgi.txt file missing or bad config.txt file?");
+                "錯誤: config.txt配置錯誤");
         return 0;
     }
 

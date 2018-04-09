@@ -66,7 +66,7 @@ void pkgi_dialog_error(const char* text)
 {
     pkgi_dialog_lock();
 
-    pkgi_strncpy(dialog_title, sizeof(dialog_title), "ERROR");
+    pkgi_strncpy(dialog_title, sizeof(dialog_title), "錯誤");
     pkgi_strncpy(dialog_text, sizeof(dialog_text), text);
     dialog_extra[0] = 0;
     dialog_eta[0] = 0;
@@ -267,7 +267,7 @@ void pkgi_do_dialog(pkgi_input* input)
         if (local_allow_close)
         {
             char text[256];
-            pkgi_snprintf(text, sizeof(text), "press %s to cancel", pkgi_ok_button() == PKGI_BUTTON_X ? PKGI_UTF8_O : PKGI_UTF8_X);
+            pkgi_snprintf(text, sizeof(text), "按下 %s 來取消", pkgi_ok_button() == PKGI_BUTTON_X ? PKGI_UTF8_O : PKGI_UTF8_X);
             pkgi_draw_text((VITA_WIDTH - pkgi_text_width(text)) / 2, PKGI_DIALOG_VMARGIN + h - 2 * font_height, PKGI_COLOR_TEXT_DIALOG, text);
         }
     }
@@ -298,7 +298,7 @@ void pkgi_do_dialog(pkgi_input* input)
         if (local_allow_close)
         {
             char text[256];
-            pkgi_snprintf(text, sizeof(text), "press %s to close", pkgi_ok_button() == PKGI_BUTTON_X ? PKGI_UTF8_X : PKGI_UTF8_O);
+            pkgi_snprintf(text, sizeof(text), "按下 %s 來關閉", pkgi_ok_button() == PKGI_BUTTON_X ? PKGI_UTF8_X : PKGI_UTF8_O);
             pkgi_draw_text((VITA_WIDTH - pkgi_text_width(text)) / 2, PKGI_DIALOG_VMARGIN + h - 2 * font_height, PKGI_COLOR_TEXT_DIALOG, text);
         }
     }

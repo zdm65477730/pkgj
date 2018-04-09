@@ -375,7 +375,7 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
 
     if (db_count == 0)
     {
-        const char* text = "No items!";
+        const char* text = "沒有數據!";
 
         int w = pkgi_text_width(text);
         pkgi_draw_text(
@@ -429,7 +429,7 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
                 LOG("[%.9s] %s - alreay installed",
                     item->content + 7,
                     item->name);
-                pkgi_dialog_error("Already installed");
+                pkgi_dialog_error("已經安裝了");
                 return;
             }
             break;
@@ -437,7 +437,7 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
             if (item->presence == PresenceInstalled)
             {
                 LOG("[%s] %s - alreay installed", item->content, item->name);
-                pkgi_dialog_error("Already installed");
+                pkgi_dialog_error("已經安裝了");
                 return;
             }
             // fallthrough
@@ -447,7 +447,7 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
                 LOG("[%.9s] %s - game not installed",
                     item->content + 7,
                     item->name);
-                pkgi_dialog_error("Corresponding game not installed");
+                pkgi_dialog_error("對應的遊戲還未安裝");
                 return;
             }
             break;
@@ -481,7 +481,7 @@ static void pkgi_do_refresh(void)
         pkgi_snprintf(
                 text,
                 sizeof(text),
-                "Refreshing... %.2f KB",
+                "刷新中... %.2f KB",
                 (uint32_t)updated / 1024.f);
     }
     else
@@ -489,7 +489,7 @@ static void pkgi_do_refresh(void)
         pkgi_snprintf(
                 text,
                 sizeof(text),
-                "Refreshing... %u%%",
+                "刷新中... %u%%",
                 updated * 100U / total);
     }
 
@@ -503,7 +503,7 @@ static void pkgi_do_head(void)
     const char* version = PKGI_VERSION;
 
     char title[256];
-    pkgi_snprintf(title, sizeof(title), "PKGj v%s", version);
+    pkgi_snprintf(title, sizeof(title), "PKGj 版本%s", version);
     pkgi_draw_text(0, 0, PKGI_COLOR_TEXT_HEAD, title);
 
     pkgi_draw_rect(
@@ -520,7 +520,7 @@ static void pkgi_do_head(void)
         pkgi_snprintf(
                 battery,
                 sizeof(battery),
-                "Battery: %u%%",
+                "電池電量: %u%%",
                 pkgi_bettery_get_level());
 
         uint32_t color;
@@ -588,11 +588,11 @@ static void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(
                 text,
                 sizeof(text),
-                "Downloading %s: %s",
+                "下載中 %s: %s",
                 type_to_string(current_download->type).c_str(),
                 current_download->name.c_str());
     else
-        pkgi_snprintf(text, sizeof(text), "Idle");
+        pkgi_snprintf(text, sizeof(text), "空閒");
 
     pkgi_draw_text(0, bottom_y, PKGI_COLOR_TEXT_TAIL, text);
 
@@ -603,11 +603,11 @@ static void pkgi_do_tail(Downloader& downloader)
 
     if (count == total)
     {
-        pkgi_snprintf(text, sizeof(text), "Count: %u", count);
+        pkgi_snprintf(text, sizeof(text), "計數: %u", count);
     }
     else
     {
-        pkgi_snprintf(text, sizeof(text), "Count: %u (%u)", count, total);
+        pkgi_snprintf(text, sizeof(text), "計數: %u (%u)", count, total);
     }
     pkgi_draw_text(0, second_line, PKGI_COLOR_TEXT_TAIL, text);
 
@@ -615,7 +615,7 @@ static void pkgi_do_tail(Downloader& downloader)
     pkgi_friendly_size(size, sizeof(size), pkgi_get_free_space());
 
     char free[64];
-    pkgi_snprintf(free, sizeof(free), "Free: %s", size);
+    pkgi_snprintf(free, sizeof(free), "剩餘空間: %s", size);
 
     int rightw = pkgi_text_width(free);
     pkgi_draw_text(
@@ -632,7 +632,7 @@ static void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(
                 text,
                 sizeof(text),
-                "%s select  " PKGI_UTF8_T " close  %s cancel",
+                "%s 選擇  " PKGI_UTF8_T " 關閉  %s 取消",
                 pkgi_get_ok_str(),
                 pkgi_get_cancel_str());
     }
@@ -642,10 +642,10 @@ static void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(
                 text,
                 sizeof(text),
-                "%s %s  " PKGI_UTF8_T " menu",
+                "%s %s  " PKGI_UTF8_T " 菜單",
                 pkgi_get_ok_str(),
-                item && item->presence == PresenceInstalling ? "cancel"
-                                                             : "install");
+                item && item->presence == PresenceInstalling ? "取消"
+                                                             : "安裝");
     }
 
     pkgi_clip_set(
@@ -712,7 +712,7 @@ int main()
     };
     downloader.error = [](const std::string& error) {
         // FIXME this runs on the wrong thread
-        pkgi_dialog_error(("Download failure: " + error).c_str());
+        pkgi_dialog_error(("下載失敗: " + error).c_str());
     };
 
     LOG("started");
@@ -736,7 +736,7 @@ int main()
         pkgi_snprintf(
                 error_state,
                 sizeof(error_state),
-                "pkgi requires unsafe enabled in Henkaku settings!");
+                "pkgj需要啟用不安全自製軟體功能!");
     }
 
     pkgi_texture background = pkgi_load_png(background);
@@ -817,7 +817,7 @@ int main()
                 switch (mres)
                 {
                 case MenuResultSearch:
-                    pkgi_dialog_input_text("Search", search_text);
+                    pkgi_dialog_input_text("檢索", search_text);
                     break;
                 case MenuResultSearchClear:
                     search_active = 0;

@@ -119,19 +119,19 @@ static uint32_t zlib_inflate(const uint8_t* in, uint32_t inlen, uint8_t* out, ui
 {
     if (inlen < 2 + 4)
     {
-        pkgi_strncpy(error, error_size, "zRIF is too short");
+        pkgi_strncpy(error, error_size, "zRIF 過短");
         return 0;
     }
 
     if (((in[0] << 8) + in[1]) % 31 != 0)
     {
-        pkgi_strncpy(error, error_size, "zRIF header is corrupted");
+        pkgi_strncpy(error, error_size, "zRIF 文件頭損壞");
         return 0;
     }
 
     if ((in[0] & 0xf) != ZLIB_DEFLATE_METHOD)
     {
-        pkgi_strncpy(error, error_size, "only deflate method supported in zRIF");
+        pkgi_strncpy(error, error_size, "此方法不被zRIF支援");
         return 0;
     }
 
@@ -146,7 +146,7 @@ static uint32_t zlib_inflate(const uint8_t* in, uint32_t inlen, uint8_t* out, ui
 
         if (get32be(in + 2) != ZLIB_DICTIONARY_ID_ZRIF)
         {
-            pkgi_strncpy(error, error_size, "zRIF uses unknown dictionary");
+            pkgi_strncpy(error, error_size, "zRIF 使用了未知字典");
            return 0;
         }
 
@@ -161,14 +161,14 @@ static uint32_t zlib_inflate(const uint8_t* in, uint32_t inlen, uint8_t* out, ui
 
     if (puff(dictlen, out, &dlen, in, &slen) != 0)
     {
-        pkgi_strncpy(error, error_size, "failed to uncompress zRIF");
+        pkgi_strncpy(error, error_size, "解壓zRIF失敗");
         return 0;
     }
     memmove(out, out + dictlen, dlen);
 
     if (adler32(out, dlen) != get32be(in + slen))
     {
-        pkgi_strncpy(error, error_size, "zRIF is corrupted, wrong checksum");
+        pkgi_strncpy(error, error_size, "zRIF損壞，錯誤的CHECKSUM");
         return 0;
     }
 
@@ -184,7 +184,7 @@ int pkgi_zrif_decode(const char* str, uint8_t* rif, char* error, uint32_t error_
     len = zlib_inflate(raw, len, out, sizeof(out), error, error_size);
     if (len != 512)
     {
-        pkgi_strncpy(error, error_size, "wrong size of zRIF, is it corrupted?");
+        pkgi_strncpy(error, error_size, "錯誤的zRIF文件大小,它是否已經損壞?");
         return 0;
     }
 

@@ -54,7 +54,7 @@ int Download::download_data(
         const int64_t http_length = _http->get_length();
         if (http_length < 0)
         {
-            throw DownloadError("HTTP response has unknown length");
+            throw DownloadError("HTTP返回長度未知");
         }
 
         download_size = http_length + download_offset;
@@ -70,12 +70,12 @@ int Download::download_data(
     if (read < 0)
     {
         char error[256];
-        pkgi_snprintf(error, sizeof(error), "HTTP download error 0x%08x", read);
+        pkgi_snprintf(error, sizeof(error), "HTTP下載錯誤 0x%08x", read);
         throw DownloadError(error);
     }
     else if (read == 0)
     {
-        throw DownloadError("HTTP connection closed");
+        throw DownloadError("HTTP 鏈接關閉");
     }
     download_offset += read;
 
@@ -104,7 +104,7 @@ int Download::download_data(
         {
             char error[256];
             pkgi_snprintf(
-                    error, sizeof(error), "failed to write to %s", item_path);
+                    error, sizeof(error), "無法寫入到 %s", item_path);
             throw DownloadError(error);
         }
     }
@@ -124,7 +124,7 @@ int Download::create_file(void)
     if (!pkgi_mkdirs(folder))
     {
         char error[256];
-        pkgi_snprintf(error, sizeof(error), "cannot create folder %s", folder);
+        pkgi_snprintf(error, sizeof(error), "無法創建文件夾 %s", folder);
         throw DownloadError(error);
     }
 
@@ -133,7 +133,7 @@ int Download::create_file(void)
     if (!item_file)
     {
         char error[256];
-        pkgi_snprintf(error, sizeof(error), "cannot create file %s", item_name);
+        pkgi_snprintf(error, sizeof(error), "無法創建文件 %s", item_name);
         throw DownloadError(error);
     }
 
@@ -160,7 +160,7 @@ int Download::download_head(const uint8_t* rif)
     if (!create_file())
     {
         char error[256];
-        pkgi_snprintf(error, sizeof(error), "cannot create %s", item_path);
+        pkgi_snprintf(error, sizeof(error), "無法創建 %s", item_path);
         throw DownloadError(error);
     }
 
@@ -180,12 +180,12 @@ int Download::download_head(const uint8_t* rif)
     if (get32be(head) != 0x7f504b47 ||
         get32be(head + PKG_HEADER_SIZE) != 0x7F657874)
     {
-        throw DownloadError("wrong pkg header");
+        throw DownloadError("錯誤的pkg文件頭");
     }
 
     if (rif && !pkgi_memequ(rif + 0x10, head + 0x30, 0x30))
     {
-        throw DownloadError("zRIF content id doesn't match pkg");
+        throw DownloadError("zRIF 內容ID與pkg文件不匹配");
     }
 
     meta_offset = get32be(head + 8);
@@ -206,7 +206,7 @@ int Download::download_head(const uint8_t* rif)
     if (enc_offset > sizeof(head))
     {
         LOG("pkg file head is too large");
-        throw DownloadError("pkg is not supported, head.bin is too big");
+        throw DownloadError("pkg 不被支持, head.bin過大");
     }
 
     pkgi_memcpy(iv, head + 0x70, sizeof(iv));
@@ -236,7 +236,7 @@ int Download::download_head(const uint8_t* rif)
         aes128_encrypt(&ctx, iv, key);
     }
     else
-        throw DownloadError("invalid key type " + std::to_string(key_type));
+        throw DownloadError("無效的秘鑰類型 " + std::to_string(key_type));
 
     aes128_ctr_init(&aes, key);
 
@@ -259,7 +259,7 @@ int Download::download_head(const uint8_t* rif)
     {
         if (offset + 16 >= enc_offset)
         {
-            throw DownloadError("pkg file is too small or corrupted");
+            throw DownloadError("pkg文件過小或損壞");
         }
 
         uint32_t type = get32be(head + offset + 0);
@@ -274,7 +274,7 @@ int Download::download_head(const uint8_t* rif)
             if (content_type != 21 && content_type != 22 && content_type != 6)
             {
                 throw DownloadError(
-                        "unsupported package type: " +
+                        "不支持的包類型: " +
                         std::to_string(content_type));
             }
         }
@@ -290,7 +290,7 @@ int Download::download_head(const uint8_t* rif)
     if (target_size > sizeof(head))
     {
         LOG("pkg file head is too large");
-        throw DownloadError("pkg is not supported, head.bin is too big");
+        throw DownloadError("pkg 不被支持, head.bin過大");
     }
 
     while (head_size != target_size)
@@ -316,16 +316,16 @@ int Download::download_head(const uint8_t* rif)
     if (index_size && item_offset != index_size)
     {
         throw DownloadError(
-                "assertion error: read-ahead mismatch, expected: " +
+                "聲明錯誤, 文件預讀不匹配, 希望獲得: " +
                 std::to_string(index_size) +
-                ", got: " + std::to_string(item_offset));
+                ", 但是獲得: " + std::to_string(item_offset));
     }
 
     target_size = (uint32_t)(enc_offset + item_offset);
     if (target_size > sizeof(head))
     {
         LOG("pkg file head is too large");
-        throw DownloadError("pkg is not supported, head.bin is too big");
+        throw DownloadError("pkg 不被支持, head.bin過大");
     }
 
     while (head_size != target_size)
@@ -372,7 +372,7 @@ int Download::download_files(void)
         if (name_size > sizeof(item_name) - 1 ||
             enc_offset + name_offset + name_size > total_size)
         {
-            throw DownloadError("pkg file is too small or corrupted");
+            throw DownloadError("pkg文件過小或損壞");
         }
 
         pkgi_memcpy(item_name, head + enc_offset + name_offset, name_size);
@@ -441,16 +441,16 @@ int Download::download_files(void)
         if (enc_offset + item_offset + encrypted_offset != download_offset)
         {
             throw DownloadError(
-                    "pkg is not supported, files are in wrong order, "
-                    "expected: " +
+                    "pkg文件不被支援, 文件順序錯誤, "
+                    "期望的: " +
                     std::to_string(
                             enc_offset + item_offset + encrypted_offset) +
-                    ", actual: " + std::to_string(download_offset));
+                    ", 實際的: " + std::to_string(download_offset));
         }
 
         if (enc_offset + item_offset + item_size > total_size)
         {
-            throw DownloadError("pkg file is too small or corrupted");
+            throw DownloadError("pkg文件過小或損壞");
         }
 
         while (encrypted_offset != encrypted_size)
@@ -494,7 +494,7 @@ int Download::download_tail(void)
     if (!create_file())
     {
         char error[256];
-        pkgi_snprintf(error, sizeof(error), "cannot create %s", item_path);
+        pkgi_snprintf(error, sizeof(error), "無法創建 %s", item_path);
         throw DownloadError(error);
     }
 
@@ -545,7 +545,7 @@ int Download::check_integrity(const uint8_t* digest)
         pkgi_snprintf(path, sizeof(path), "%s/sce_sys/package/head.bin", root);
         pkgi_rm(path);
 
-        throw DownloadError("pkg integrity failed, try downloading again");
+        throw DownloadError("pkg完整性效驗錯誤, 請嘗試重新下載");
     }
 
     LOG("pkg integrity check succeeded");
@@ -564,7 +564,7 @@ int Download::create_stat()
     if (!pkgi_save(path, stat, sizeof(stat)))
     {
         char error[256];
-        pkgi_snprintf(error, sizeof(error), "cannot save rif to %s", path);
+        pkgi_snprintf(error, sizeof(error), "無法將rif保存到 %s", path);
         throw DownloadError(error);
     }
 
@@ -583,7 +583,7 @@ int Download::create_rif(const uint8_t* rif)
     if (!pkgi_save(path, rif, PKGI_RIF_SIZE))
     {
         char error[256];
-        pkgi_snprintf(error, sizeof(error), "cannot save rif to %s", path);
+        pkgi_snprintf(error, sizeof(error), "無法將rif保存到 %s", path);
         throw DownloadError(error);
     }
 
