@@ -2,7 +2,7 @@
 
 [![Travis CI Build Status][img_travis]][pkgj_travis] [![Downloads][img_downloads]][pkgj_downloads] [![Release][img_latest]][pkgj_latest] [![License][img_license]][pkgj_license]
 
-pkgj allows to install original pkg files on your Vita.
+让你可以在psvita上直接下载NoNpDRM游戏。
 
 This homebrew allows to download & unpack pkg file directly on Vita together with your [NoNpDrm][] fake license.
 
@@ -23,18 +23,18 @@ Current limitations:
 
 # Download
 
-Get latest version as [vpk file here][pkgj_latest].
+在这里下载最新的vpk安装包 [vpk file here][pkgj_latest].
 
 # Setup instructions
 
-Setup games databases URLs in `ux0:pkgi/config.txt`. The file format is the following:
+在 `ux0:pkgi/config.txt` 中如下设置游戏数据库链接。
 
-    url_games https://thesite/games.tsv
-    url_updates https://thesite/updates.tsv
-    url_dlcs https://thesite/dlcs.tsv
-    url_psx_games https://thesite/psxgames.tsv
+    url_games http://45.78.54.81/PSV_GAMES.tsv
+    url_updates https://nopaystation.com/tsv/PSV_UPDATES.tsv
+    url_dlcs http://45.78.54.81/PSV_DLCS.tsv
+    url_psx_games https://nopaystation.com/tsv/PSX_GAMES.tsv
 
-Then start the application and you are ready to go.
+你已经准备好了，现在就可以启动你的软件了
 
 To avoid downloading pkg file over network, you can place it in `ux0:pkgi` folder. Keep the name of file same as in http url,
 or rename it with same name as contentid. pkgj will first check if pkg file can be read locally, and only if it is missing
