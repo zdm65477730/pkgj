@@ -23,7 +23,7 @@ Current limitations:
 
 # Download
 
-在这里下载最新的vpk安装包 [vpk file here][pkgj_latest].
+在这里下载最新的vpk安装包 [vpk file here][https://github.com/guch8017/pkgj/releases].
 
 # Setup instructions
 
