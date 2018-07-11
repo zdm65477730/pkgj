@@ -1,8 +1,8 @@
 # pkgj
 
-[![Travis CI Build Status][img_travis]][pkgj_travis] [![License][img_license]][pkgj_license]
+[![Travis CI Build Status][img_travis]][pkgj_travis] [![Downloads][img_downloads]][pkgj_downloads] [![Release][img_latest]][pkgj_latest] [![License][img_license]][pkgj_license]
 
-让你可以在psvita上直接下载NoNpDRM游戏。
+pkgj allows to install original pkg files on your Vita.
 
 This homebrew allows to download & unpack pkg file directly on Vita together with your [NoNpDrm][] fake license.
 
@@ -15,7 +15,7 @@ This homebrew allows to download & unpack pkg file directly on Vita together wit
 Differences with PKGi:
 * **queues** multiple downloads.
 * **supports** the TSV file format.
-* **installs** game updates, DLCs and PSX games.
+* **installs** game updates, DLCs, PSP and PSX games.
 
 Current limitations:
 * **no support for PSM**.
@@ -23,22 +23,22 @@ Current limitations:
 
 # Download
 
-在这里下载最新的vpk安装包 [https://github.com/guch8017/pkgj/releases].
+Get latest version as [vpk file here][pkgj_latest].
 
 # Setup instructions
 
-在 `ux0:pkgi/config.txt` 中如下设置游戏数据库链接。
+Setup games databases URLs in `ux0:pkgi/config.txt`. The file format is the following:
 
-    url_games http://45.78.54.81/PSV_GAMES.tsv
-    url_updates https://nopaystation.com/tsv/PSV_UPDATES.tsv
-    url_dlcs http://45.78.54.81/PSV_DLCS.tsv
-    url_psx_games https://nopaystation.com/tsv/PSX_GAMES.tsv
+    url_games http://thesite/games.tsv
+    url_updates http://thesite/updates.tsv
+    url_dlcs http://thesite/dlcs.tsv
+    url_psx_games http://thesite/psxgames.tsv
+    url_psp_games http://thesite/pspgames.tsv
 
-你已经准备好了，现在就可以启动你的软件了
+**Attention:** The PS Vita has an imcomplete HTTPS support and most sites will not
+work, prefer HTTP in these cases.
 
-To avoid downloading pkg file over network, you can place it in `ux0:pkgi` folder. Keep the name of file same as in http url,
-or rename it with same name as contentid. pkgj will first check if pkg file can be read locally, and only if it is missing
-then pkgj will download it from http url.
+Then start the application and you are ready to go.
 
 # Usage
 
@@ -68,6 +68,33 @@ Press left or right button to move page up or down.
   have and WiFi signal strength. But sometimes speed will drop down to only few hundred KB/s. This happens for pkg files that
   contains many small files or many folders. Creating a new file or a new folder takes extra time which slows down the download.
 
+4. I want to install PSP games as EBOOT file.
+
+  Installing PSP games as EBOOT files is possible. It allows to install games
+  faster and make them take less space. However, you will need to install
+  the [npdrm_free][] plugin to make them work.
+
+  To install PSP games as EBOOT files, just add the following line to your
+  config:
+
+    install_psp_as_pbp 1
+
+  If you want to switch back to the other mode, simply remove the line. Writing
+  0 is not sufficient.
+
+5. I can't play PSP games, it says "The game could not be started (80010087)".
+
+  You need to install the [npdrm_free][] plugin in VSH, or install games as ISO.
+
+6. I want to install PSP and PSX games on another partition.
+
+  You can change the partitions these games are installed to with the following
+  configuration line:
+
+    install_psp_psx_location uma0:
+
+  The default value is `ux0:`
+
 # Building
 
 You need to have [Vita SDK][vitasdk] with [libvita2d][] installed.
@@ -82,15 +109,14 @@ UDP multicast address 239.255.0.100:30000. To receive them you can use [socat][]
 
     $ socat udp4-recv:30000,ip-add-membership=239.255.0.100:0.0.0.0 -
 
-For easer debugging on Windows you can build pkgj in "simulator" mode - use Visual Studio 2017 solution from simulator folder.
-
 # License
 
 This software is released under the 2-clause BSD license.
 
 puff.h and puff.c files are under [zlib][] license.
 
-[NoNpDrm]: https://github.com/TheOfficialFloW/NoNpDrm
+[NoNpDrm]: https://github.com/TheOfficialFloW/NoNpDrm/releases
+[npdrm_free]: https://github.com/kyleatlast/npdrm_free/releases
 [zrif_online_converter]: https://rawgit.com/mmozeiko/pkg2zip/online/zrif.html
 [pkg_dec]: https://github.com/weaknespase/PkgDecrypt
 [pkg_releases]: https://github.com/blastrock/pkgj/releases
@@ -107,3 +133,8 @@ puff.h and puff.c files are under [zlib][] license.
 [img_downloads]: https://img.shields.io/github/downloads/blastrock/pkgj/total.svg?maxAge=3600
 [img_latest]: https://img.shields.io/github/release/blastrock/pkgj.svg?maxAge=3600
 [img_license]: https://img.shields.io/github/license/blastrock/pkgj.svg?maxAge=2592000
+
+# Donating
+
+Bitcoin: 128vikqd3AyNEXEiU5uSJvCrRq1e3kRX6n
+Monero: 45sCwEFcPD9ZfwD2UKt6gcG3vChFrMmJHUmVVBUWwPFoPsjmkzvN7i9DKn4pUkyif5axgbnYNqU3NCqugudjTWqdFv5uKQV
