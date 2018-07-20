@@ -40,7 +40,7 @@ VitaHttp::~VitaHttp()
 void VitaHttp::start(const std::string& url, uint64_t offset)
 {
     if (_http)
-        throw HttpError("HTTP请求已经启动");
+        throw HttpError("HTTP connection already started");
 
     LOG("http get");
 
@@ -55,18 +55,18 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     }
 
     if (!http)
-        throw HttpError("内部错误:过多同时的HTTP请求");
+        throw HttpError("internal error: too many simultaneous http requests");
 
     int tmpl = -1;
     int conn = -1;
     int req = -1;
 
-    LOG("starting http GET request for %s", url);
+    LOGF("starting http GET request for {}", url);
 
     if ((tmpl = sceHttpCreateTemplate(
                  PKGI_USER_AGENT, SCE_HTTP_VERSION_1_1, SCE_TRUE)) < 0)
         throw HttpError(fmt::format(
-                "HTTP创建模板失败: {:#08x}",
+                "sceHttpCreateTemplate failed: {:#08x}",
                 static_cast<uint32_t>(tmpl)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -78,7 +78,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((conn = sceHttpCreateConnectionWithURL(tmpl, url.c_str(), SCE_FALSE)) <
         0)
         throw HttpError(fmt::format(
-                "HTTP通过URL创建连接失败: {:#08x}",
+                "sceHttpCreateConnectionWithURL failed: {:#08x}",
                 static_cast<uint32_t>(conn)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -89,7 +89,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((req = sceHttpCreateRequestWithURL(
                  conn, SCE_HTTP_METHOD_GET, url.c_str(), 0)) < 0)
         throw HttpError(fmt::format(
-                "HTTP通过URL创建请求失败: {:#08x}",
+                "sceHttpCreateRequestWithURL failed: {:#08x}",
                 static_cast<uint32_t>(req)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -106,17 +106,17 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
         if ((err = sceHttpAddRequestHeader(
                      req, "Range", range, SCE_HTTP_HEADER_ADD)) < 0)
             throw HttpError(fmt::format(
-                    "HTTP添加请求头文件失败: {:#08x}",
+                    "sceHttpAddRequestHeader failed: {:#08x}",
                     static_cast<uint32_t>(err)));
     }
 
     if ((err = sceHttpSendRequest(req, NULL, 0)) < 0)
         throw formatEx<HttpError>(
-                "发出HTTP请求失败: {:#08x}\n{}",
+                "sceHttpSendRequest failed: {:#08x}\n{}",
                 static_cast<uint32_t>(err),
                 static_cast<uint32_t>(err) == 0x80431075
-                        ? "你的设备可能不支持HTTPS链接\n"
-                          "解决方法:尝试HTTP链接(于pkgi/config.txt下修改)"
+                        ? "HTTPS URLs may not be supported on your "
+                          "device.\nTry with HTTP."
                         : "");
 
     http->used = 1;
@@ -133,7 +133,7 @@ int64_t VitaHttp::read(uint8_t* buffer, uint64_t size)
     int read = sceHttpReadData(_http->req, buffer, size);
     if (read < 0)
         throw HttpError(fmt::format(
-                "HTTP下载错误 {:#08x}",
+                "HTTP download error {:#08x}",
                 static_cast<uint32_t>(static_cast<int32_t>(read))));
     return read;
 }
@@ -144,13 +144,13 @@ int64_t VitaHttp::get_length()
     int status;
     if ((res = sceHttpGetStatusCode(_http->req, &status)) < 0)
         throw HttpError(fmt::format(
-                "获取HTTP状态代码失败: {:#08x}",
+                "sceHttpGetStatusCode failed: {:#08x}",
                 static_cast<uint32_t>(res)));
 
-    LOG("http status code = %d", status);
+    LOGF("http status code = {}", status);
 
     if (status != 200 && status != 206)
-        throw HttpError(fmt::format("错误的HTTP状态代码: {}", status));
+        throw HttpError(fmt::format("bad http status: {}", status));
 
     char* headers;
     unsigned int size;
@@ -164,7 +164,7 @@ int64_t VitaHttp::get_length()
     res = sceHttpGetResponseContentLength(_http->req, &content_length);
     if (res < 0)
         throw HttpError(fmt::format(
-                "获取返回内容长度失败: {:#08x}",
+                "sceHttpGetResponseContentLength failed: {:#08x}",
                 static_cast<uint32_t>(res)));
     if (res == (int)SCE_HTTP_ERROR_NO_CONTENT_LENGTH ||
         res == (int)SCE_HTTP_ERROR_CHUNK_ENC)
@@ -174,7 +174,7 @@ int64_t VitaHttp::get_length()
         return 0;
     }
 
-    LOG("http response length = %llu", content_length);
+    LOGF("http response length = {}", content_length);
     return content_length;
 }
 

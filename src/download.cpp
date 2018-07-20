@@ -92,7 +92,7 @@ static void rc_init(
     if (in_len < 5)
     {
         throw DownloadError(
-                "内部错误,pkg可能损坏.解决方法:重新下载;更换下载源");
+                "internal error - lzrc input underflow! pkg may be corrupted");
     }
 
     rc->input = static_cast<const uint8_t*>(in);
@@ -244,7 +244,8 @@ static int lzrc_decompress(void* out, int out_len, const void* in, int in_len)
             if (rc.out_ptr == rc.out_len)
             {
                 throw DownloadError(
-                        "内部错误,pkg可能损坏.解决方法:重新下载;更换下载源");
+                        "internal error - lzrc output overflow! pkg may be "
+                        "corrupted");
             }
             rc.output[rc.out_ptr++] = (uint8_t)byte;
             last_byte = (uint8_t)byte;
@@ -311,13 +312,15 @@ static int lzrc_decompress(void* out, int out_len, const void* in, int in_len)
             if (match_dist > rc.out_ptr)
             {
                 throw DownloadError(
-                        "内部错误,pkg可能损坏.解决方法:重新下载;更换下载源");
+                        "internal error - lzrc match_dist out of range! pkg "
+                        "may be corrupted");
             }
 
             if (rc.out_ptr + match_len + 1 > rc.out_len)
             {
                 throw DownloadError(
-                        "内部错误,pkg可能损坏.解决方法:重新下载;更换下载源");
+                        "internal error - lzrc output overflow! pkg may be "
+                        "corrupted");
             }
 
             const uint8_t* match_src = rc.output + rc.out_ptr - match_dist;
@@ -374,7 +377,7 @@ void Download::download_data(
         uint8_t* buffer, uint32_t size, int encrypted, int save)
 {
     if (is_canceled())
-        throw std::runtime_error("下载被取消");
+        throw std::runtime_error("download was canceled");
 
     if (size == 0)
         return;
@@ -389,7 +392,7 @@ void Download::download_data(
         const int64_t http_length = _http->get_length();
         if (http_length < 0)
         {
-            throw DownloadError("HTTP返回长度未知");
+            throw DownloadError("HTTP response has unknown length");
         }
 
         download_size = http_length + download_offset;
@@ -407,7 +410,7 @@ void Download::download_data(
         {
             const int read = _http->read(buffer + pos, size - pos);
             if (read == 0)
-                throw DownloadError("HTTP链接关闭");
+                throw DownloadError("HTTP connection closed");
             pos += read;
         }
     }
@@ -436,7 +439,7 @@ void Download::download_data(
         }
 
         if (!pkgi_write(item_file, buffer, write))
-            throw formatEx<DownloadError>("无法写入到 {}", item_path);
+            throw formatEx<DownloadError>("failed to write to {}", item_path);
     }
 }
 
@@ -444,7 +447,7 @@ void Download::skip_to_file_offset(uint64_t to_offset)
 {
     if (to_offset < encrypted_offset)
         throw DownloadError(
-                fmt::format("无法向后寻道至 {}", to_offset));
+                fmt::format("can't seek backward to {}", to_offset));
     std::vector<uint8_t> tmp(to_offset - encrypted_offset);
     download_data(tmp.data(), tmp.size(), 1, 0);
 }
@@ -461,7 +464,7 @@ void Download::create_file()
     LOGF("creating {} file", item_name);
     item_file = pkgi_create(item_path.c_str());
     if (!item_file)
-        throw formatEx<DownloadError>("无法创建文件 {}", item_name);
+        throw formatEx<DownloadError>("cannot create file {}", item_name);
 }
 
 void Download::open_file()
@@ -469,7 +472,7 @@ void Download::open_file()
     LOGF("opening {} file for resume", item_name);
     item_file = pkgi_openrw(item_path.c_str());
     if (!item_file)
-        throw formatEx<DownloadError>("无法创建文件 {}", item_name);
+        throw formatEx<DownloadError>("cannot create file {}", item_name);
 }
 
 int Download::download_head(const uint8_t* rif)
@@ -496,12 +499,12 @@ int Download::download_head(const uint8_t* rif)
     if (get32be(head.data()) != 0x7f504b47 ||
         get32be(head.data() + PKG_HEADER_SIZE) != 0x7F657874)
     {
-        throw DownloadError("pkg文件头错误,请尝试重新下载");
+        throw DownloadError("wrong pkg header");
     }
 
     if (rif && !pkgi_memequ(rif + 0x10, head.data() + 0x30, 0x30))
     {
-        throw DownloadError("zRIF内容ID于pkg文件不匹配,请尝试重新下载");
+        throw DownloadError("zRIF content id doesn't match pkg");
     }
 
     const auto meta_offset = get32be(head.data() + 8);
@@ -546,7 +549,7 @@ int Download::download_head(const uint8_t* rif)
         aes128_encrypt(&ctx, iv, key);
     }
     else
-        throw DownloadError("无效秘钥类型 " + std::to_string(key_type));
+        throw DownloadError("invalid key type " + std::to_string(key_type));
 
     aes128_ctr_init(&aes, key);
 
@@ -564,7 +567,7 @@ int Download::download_head(const uint8_t* rif)
     {
         if (offset + 16 >= enc_offset)
         {
-            throw DownloadError("pkg文件过小或损坏,请尝试重新下载");
+            throw DownloadError("pkg file is too small or corrupted");
         }
 
         uint32_t type = get32be(head.data() + offset + 0);
@@ -580,7 +583,7 @@ int Download::download_head(const uint8_t* rif)
                 content_type != CONTENT_TYPE_PSV_DLC)
             {
                 throw DownloadError(
-                        "不支持的包类型: " +
+                        "unsupported package type: " +
                         std::to_string(content_type));
             }
         }
@@ -607,9 +610,9 @@ int Download::download_head(const uint8_t* rif)
     if (index_size && item_offset != index_size)
     {
         throw DownloadError(
-                "声明错误: 预读取不匹配, 期望: " +
+                "assertion error: read-ahead mismatch, expected: " +
                 std::to_string(index_size) +
-                ", 实际: " + std::to_string(item_offset));
+                ", got: " + std::to_string(item_offset));
     }
 
     const auto target_size = (uint32_t)(enc_offset + item_offset);
@@ -645,17 +648,17 @@ void Download::download_file_content(uint64_t encrypted_size)
 void Download::download_file_content_to_iso(uint64_t item_size)
 {
     if (item_size < 0x28)
-        throw DownloadError("eboot.pbp 过小,请尝试重新下载");
+        throw DownloadError("eboot.pbp file is too small");
 
     uint8_t eboot_header[0x28];
     download_data(eboot_header, sizeof(eboot_header), 1, 0);
 
     if (memcmp(eboot_header, "\x00PBP", 4) != 0)
-        throw DownloadError("错误的eboot.pbp文件头");
+        throw DownloadError("wrong eboot.pbp header magic");
 
     uint32_t const psar_offset = get32le(eboot_header + 0x24);
     if (psar_offset + 256 > item_size)
-        throw DownloadError("eboot.pbp 过小,请尝试重新下载");
+        throw DownloadError("eboot.pbp file is to short");
     if (psar_offset % 16 != 0)
         throw DownloadError("psar_offset is not aligned");
 
@@ -665,12 +668,12 @@ void Download::download_file_content_to_iso(uint64_t item_size)
     download_data(psar_header.data(), psar_header.size(), 1, 0);
 
     if (memcmp(psar_header.data(), "NPUMDIMG", 8) != 0)
-        throw DownloadError("错误的 data.psar 文件头");
+        throw DownloadError("wrong data.psar header magic");
 
     uint32_t const iso_block = get32le(psar_header.data() + 0x0c);
     if (iso_block > 16)
         throw DownloadError(fmt::format(
-                "不支持 data.psar 块大小 %u, 最大支持 %u ,不支持此游戏安装!",
+                "unsupported data.psar block size %u, max %u supported",
                 iso_block,
                 16));
 
@@ -690,7 +693,7 @@ void Download::download_file_content_to_iso(uint64_t item_size)
     uint32_t iso_table = get32le(psar_header.data() + 0x6c);
 
     if (iso_table + block_count * 32 > item_size)
-        throw DownloadError("data.psar 偏移表文件过大,不支持此游戏安装!");
+        throw DownloadError("offset table in data.psar file is too large");
 
     uint64_t const table_offset = psar_offset + iso_table;
     skip_to_file_offset(table_offset);
@@ -713,7 +716,7 @@ void Download::download_file_content_to_iso(uint64_t item_size)
 
         if (psar_offset + block_size > item_size)
             throw DownloadError(fmt::format(
-                    "iso 块大小/偏移过大: {} > {},不支持此游戏安装!",
+                    "iso block size/offset is to large: {} > {}",
                     psar_offset + block_size,
                     item_size));
 
@@ -737,7 +740,7 @@ void Download::download_file_content_to_iso(uint64_t item_size)
         {
             if (!pkgi_write(item_file, data.data(), block_size))
                 throw DownloadError(
-                        fmt::format("无法写入到 %s", item_path));
+                        fmt::format("failed to write to %s", item_path));
         }
         else
         {
@@ -750,11 +753,12 @@ void Download::download_file_content_to_iso(uint64_t item_size)
             if (out_size != int(iso_block) * ISO_SECTOR_SIZE)
             {
                 throw DownloadError(
-                        "内部错误,pkg可能损坏.解决方法:重新下载;更换下载源");
+                        "internal error - lzrc decompression failed! "
+                        "pkg may be corrupted");
             }
             if (!pkgi_write(item_file, uncompressed.data(), out_size))
                 throw DownloadError(
-                        fmt::format("无法写入到 %s", item_path));
+                        fmt::format("failed to write to %s", item_path));
         }
     }
 
@@ -764,7 +768,7 @@ void Download::download_file_content_to_iso(uint64_t item_size)
 void Download::download_file_content_to_pspkey(uint64_t item_size)
 {
     if (item_size < 0x90 + 0xa0)
-        throw DownloadError("PSP-KEY.EDAT 文件过小,请尝试重新下载");
+        throw DownloadError("PSP-KEY.EDAT file is too short");
 
     skip_to_file_offset(0x90);
 
@@ -772,13 +776,13 @@ void Download::download_file_content_to_pspkey(uint64_t item_size)
     download_data(key_header, sizeof(key_header), 1, 0);
 
     if (memcmp(key_header, "\x00PGD", 4) != 0)
-        throw DownloadError("PSP-KEY.EDAT文件错误,请尝试重新下载");
+        throw DownloadError("wrong PSP-KEY.EDAT header magic");
 
     uint32_t key_index = get32le(key_header + 4);
     uint32_t drm_type = get32le(key_header + 8);
     if (key_index != 1 || drm_type != 1)
         throw DownloadError(
-                "不支持的PSP-KEY.EDAT, 秘钥/加密类型可能错误,请检查数据库");
+                "unsupported PSP-KEY.EDAT file, key/drm type is wrong");
 
     uint8_t mac[16];
     aes128_cmac(kirk7_key38, key_header, 0x70, mac);
@@ -793,13 +797,13 @@ void Download::download_file_content_to_pspkey(uint64_t item_size)
 
     if (data_size != 0x10 || data_offset != 0x90)
         throw DownloadError(
-                "不支持的PSP-KEY.EDAT, 数据/偏移值可能错误,请检查数据库");
+                "unsupported PSP-KEY.EDAT file, data/offset is wrong");
 
     init_psp_decrypt(&psp_key, psp_iv, 0, mac, key_header, 0x70, 0x30);
     aes128_psp_decrypt(&psp_key, psp_iv, 0, key_header + 0x90, 0x10);
 
     if (!pkgi_write(item_file, key_header + 0x90, 0x10))
-        throw DownloadError(fmt::format("无法写入到 %s", item_path));
+        throw DownloadError(fmt::format("failed to write to %s", item_path));
 
     skip_to_file_offset(item_size);
 }
@@ -833,7 +837,7 @@ int Download::download_files(void)
         const uint8_t type = item[27];
 
         if (enc_offset + name_offset + name_size > total_size)
-            throw DownloadError("pkg文件过小或损坏,请尝试重新下载");
+            throw DownloadError("pkg file is too small or corrupted");
 
         {
             std::vector<uint8_t> item_name_v(
@@ -903,20 +907,20 @@ int Download::download_files(void)
         {
             open_file();
             if (pkgi_seek(item_file, encrypted_offset) < 0)
-                throw ResumeError("无法找到恢复断点,请删除pkgi文件夹下的已下载数据并重试");
+                throw ResumeError("failed to seek for resume");
         }
         else
             create_file();
 
         if (enc_offset + item_offset + encrypted_offset != download_offset)
             throw formatEx<DownloadError>(
-                    "pkg文件不支持, "
-                    "期望: {}, 实际: {}",
+                    "pkg is not supported, files are in wrong order, "
+                    "expected: {}, actual: {}",
                     enc_offset + item_offset + encrypted_offset,
                     +download_offset);
 
         if (enc_offset + item_offset + item_size > total_size)
-            throw DownloadError("pkg文件过小或损坏");
+            throw DownloadError("pkg file is too small or corrupted");
 
         if (content_type == CONTENT_TYPE_PSP_GAME ||
             content_type == CONTENT_TYPE_PSP_MINI_GAME)
@@ -998,7 +1002,7 @@ int Download::check_integrity(const uint8_t* digest)
 
         pkgi_rm(fmt::format("{}/sce_sys/package/head.bin", root).c_str());
 
-        throw DownloadError("pkg损坏,请尝试重新下载");
+        throw DownloadError("pkg integrity failed, try downloading again");
     }
 
     LOG("pkg integrity check succeeded");
@@ -1014,7 +1018,7 @@ int Download::create_stat()
 
     uint8_t stat[768] = {0};
     if (!pkgi_save(path.c_str(), stat, sizeof(stat)))
-        throw formatEx<DownloadError>("无法写入到 {}", path);
+        throw formatEx<DownloadError>("cannot save zeros to {}", path);
 
     LOG("stat.bin created");
     return 1;
@@ -1028,7 +1032,7 @@ int Download::create_rif(const uint8_t* rif)
     const auto path = fmt::format("{}/sce_sys/package/work.bin", root);
 
     if (!pkgi_save(path.c_str(), rif, PKGI_RIF_SIZE))
-        throw formatEx<DownloadError>("无法将rif文件保存到 {}", path);
+        throw formatEx<DownloadError>("cannot save rif to {}", path);
 
     LOG("work.bin created");
     return 1;
@@ -1096,6 +1100,7 @@ int Download::pkgi_download(
         try
         {
             pkgi_rm(fmt::format("{}.resume", root).c_str());
+            pkgi_delete_dir(root);
         }
         catch (const std::exception& e)
         {

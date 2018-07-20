@@ -5,6 +5,7 @@ extern "C" {
 #include "utils.h"
 }
 #include "pkgi.hpp"
+#include "sqlite.hpp"
 
 #include <fmt/format.h>
 
@@ -24,11 +25,11 @@ std::string pkgi_mode_to_string(Mode mode)
 #define RET(mode, str) \
     case Mode##mode:   \
         return str
-        RET(Games, "PSV游戏");
-        RET(Updates, "PSV更新");
-        RET(Dlcs, "PSV DLC");
-        RET(PsxGames, "PSX游戏");
-        RET(PspGames, "PSP游戏");
+        RET(Games, "Vita games");
+        RET(Updates, "Vita updates");
+        RET(Dlcs, "Vita DLCs");
+        RET(PsxGames, "PSX games");
+        RET(PspGames, "PSP games");
 #undef RET
     default:
         return "unknown mode";
@@ -69,27 +70,6 @@ static std::array<uint8_t, 32> pkgi_hexbytes(
 
     return result;
 }
-
-#define SQLITE_CHECK(call, errstr)                                     \
-    do                                                                 \
-    {                                                                  \
-        auto err = call;                                               \
-        if (err != SQLITE_OK)                                          \
-            throw std::runtime_error(fmt::format(                      \
-                    errstr ":\n{}", sqlite3_errmsg(_sqliteDb.get()))); \
-    } while (false)
-
-#define SQLITE_EXEC_RESULT(handle, statement, errstr, cb, data)              \
-    do                                                                       \
-    {                                                                        \
-        char* errmsg;                                                        \
-        auto err = sqlite3_exec(handle.get(), statement, cb, data, &errmsg); \
-        if (err != SQLITE_OK)                                                \
-            throw std::runtime_error(fmt::format(errstr ":\n{}", errmsg));   \
-    } while (false)
-
-#define SQLITE_EXEC(handle, statement, errstr) \
-    SQLITE_EXEC_RESULT(handle, statement, errstr, nullptr, nullptr)
 
 TitleDatabase::TitleDatabase(Mode mode, std::string const& dbPath)
     : mode(mode), _dbPath(dbPath)

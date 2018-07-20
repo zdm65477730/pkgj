@@ -135,7 +135,7 @@ static std::string modeToDbName(Mode mode)
         return "pkgj_psxgames.db";
     }
     throw std::runtime_error(
-            fmt::format("未知模式: {}", static_cast<int>(mode)));
+            fmt::format("unknown mode: {}", static_cast<int>(mode)));
 }
 
 static void pkgi_start_download(Downloader& downloader)
@@ -218,7 +218,7 @@ static std::string const& pkgi_get_url_from_mode(Mode mode)
         return config.psx_games_url;
     }
     throw std::runtime_error(
-            fmt::format("未知模式: {}", static_cast<int>(mode)));
+            fmt::format("unknown mode: {}", static_cast<int>(mode)));
 }
 
 static void pkgi_set_mode(Mode set_mode)
@@ -478,7 +478,7 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
 
     if (db_count == 0)
     {
-        const char* text = "无数据.请使用菜单->刷新功能";
+        const char* text = "无数据,请尝试刷新";
 
         int w = pkgi_text_width(text);
         pkgi_draw_text(
@@ -532,9 +532,7 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
         case ModePspGames:
             if (item->presence == PresenceInstalled)
             {
-                LOG("[%s] %s - alreay installed",
-                    item->titleid.c_str(),
-                    item->name);
+                LOGF("[{}] {} - alreay installed", item->titleid, item->name);
                 pkgi_dialog_error("已经安装");
                 return;
             }
@@ -542,7 +540,7 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
         case ModeDlcs:
             if (item->presence == PresenceInstalled)
             {
-                LOG("[%s] %s - alreay installed", item->content, item->name);
+                LOGF("[{}] {} - alreay installed", item->content, item->name);
                 pkgi_dialog_error("已经安装");
                 return;
             }
@@ -550,15 +548,13 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
         case ModeUpdates:
             if (item->presence != PresenceGamePresent)
             {
-                LOG("[%s] %s - game not installed",
-                    item->titleid.c_str(),
-                    item->name);
-                pkgi_dialog_error("未安装游戏本体");
+                LOGF("[{}] {} - game not installed", item->titleid, item->name);
+                pkgi_dialog_error("依赖游戏未安装");
                 return;
             }
             break;
         }
-        LOG("[%s] %s - starting to install", item->content, item->name);
+        LOGF("[{}] {} - starting to install", item->content, item->name);
         pkgi_start_download(downloader);
     }
     else if (input && (input->pressed & PKGI_BUTTON_T))
@@ -610,7 +606,7 @@ static void pkgi_do_head(void)
     const char* version = PKGI_VERSION;
 
     char title[256];
-    pkgi_snprintf(title, sizeof(title), "PKGj v%s 简体中文汉化版", version);
+    pkgi_snprintf(title, sizeof(title), "PKGj v%s", version);
     pkgi_draw_text(0, 0, PKGI_COLOR_TEXT_HEAD, title);
 
     pkgi_draw_rect(
@@ -627,7 +623,7 @@ static void pkgi_do_head(void)
         pkgi_snprintf(
                 battery,
                 sizeof(battery),
-                "电池电量: %u%%",
+                "电池: %u%%",
                 pkgi_bettery_get_level());
 
         uint32_t color;
@@ -868,10 +864,10 @@ static void pkgi_reload()
     }
     catch (const std::exception& e)
     {
-        LOG("error during reload: %s", e.what());
+        LOGF("error during reload: {}", e.what());
         pkgi_dialog_error(
                 fmt::format(
-                        "无法读取数据库缓存: {}, 请尝试菜单->刷新", e.what())
+                        "数据库读取失败: {}, 请尝试刷新", e.what())
                         .c_str());
     }
 }
@@ -894,9 +890,9 @@ static void pkgi_open_db()
     }
     catch (const std::exception& e)
     {
-        LOG("error during database open: %s", e.what());
+        LOGF("error during database open: {}", e.what());
         throw formatEx<std::runtime_error>(
-                "数据表错误: %s, 请删除ux0:pkgi文件夹中的.db文件");
+                "数据库错误: %s\n请手动删除");
     }
 
     pkgi_reload();
@@ -908,6 +904,11 @@ int main()
 
     try
     {
+        if (!pkgi_is_unsafe_mode())
+            throw std::runtime_error(
+                    "打开不安全模式"
+                    "");
+
         fw_version = pkgi_get_system_version();
 
         Downloader downloader;
@@ -917,7 +918,7 @@ int main()
             const auto item = db->get_by_content(content.c_str());
             if (!item)
             {
-                LOG("couldn't find %s", content.c_str());
+                LOGF("couldn't find {}", content);
                 return;
             }
             item->presence = PresenceUnknown;
@@ -938,15 +939,6 @@ int main()
         bottom_y = VITA_HEIGHT - 2 * font_height - PKGI_MAIN_ROW_PADDING;
 
         pkgi_open_db();
-
-        if (!pkgi_is_unsafe_mode())
-        {
-            state = StateError;
-            pkgi_snprintf(
-                    error_state,
-                    sizeof(error_state),
-                    "请启用设置-HENkaku设置-启用不安全自制软件选项");
-        }
 
         pkgi_texture background = pkgi_load_png(background);
 

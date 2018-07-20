@@ -6,6 +6,7 @@ extern "C" {
 #include "config.hpp"
 #include "db.hpp"
 #include "http.hpp"
+#include "sfo.hpp"
 
 #include <fmt/format.h>
 
@@ -478,6 +479,20 @@ void pkgi_start(void)
     sceAppUtilSystemParamGetInt(
             SCE_SYSTEM_PARAM_ID_ENTER_BUTTON, (int*)&config.enterButtonAssign);
     sceCommonDialogSetConfigParam(&config);
+    if (!pkgi_file_exists("ux0:pkgi/config.txt"))
+    {
+        pkgi_create("ux0:pkgi/config.txt");
+        if (!pkgi_file_exists("ux0:pkgi/config.txt"))
+        {
+            pkgi_mkdirs("ux0:pkgi");
+            pkgi_create("ux0:pkgi/config.txt");
+        }
+        
+        auto data1 = "install_psp_psx_location ux0:\nsort title\norder asc\nfilter ASA,EUR,JPN,USA";
+        int length = sizeof(data1);
+        pkgi_save("ux0:pkgi/config.txt",data1,length);
+
+    }
 
     if (config.enterButtonAssign == SCE_SYSTEM_PARAM_ENTER_BUTTON_CIRCLE)
     {
@@ -683,10 +698,10 @@ void pkgi_install(const char* contentid)
     const auto res = scePromoterUtilityPromotePkgWithRif(path, 1);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "scePromoterUtilityPromotePkgWithRif(NND)失败: {:#08x}\n{}",
+                "scePromoterUtilityPromotePkgWithRif failed: {:#08x}\n{}",
                 static_cast<uint32_t>(res),
                 static_cast<uint32_t>(res) == 0x80870004
-                        ? "解决方法:检查NoNpDRM插件安装情况"
+                        ? "Please check your NoNpDrm installation"
                         : "");
 }
 
@@ -698,7 +713,7 @@ void pkgi_delete_dir(const std::string& path)
 
     if (dfd < 0)
         throw formatEx<std::runtime_error>(
-                "文件打开失败 ({}): {:#08x}",
+                "failed sceIoDopen({}): {:#08x}",
                 path,
                 static_cast<uint32_t>(dfd));
 
@@ -728,7 +743,7 @@ void pkgi_delete_dir(const std::string& path)
             const auto ret = sceIoRemove(new_path.c_str());
             if (ret < 0)
                 throw formatEx<std::runtime_error>(
-                        "删除失败({}): {:#08x}",
+                        "failed sceIoRemove({}): {:#08x}",
                         new_path,
                         static_cast<uint32_t>(ret));
         }
@@ -740,7 +755,7 @@ void pkgi_delete_dir(const std::string& path)
     res = sceIoRmdir(path.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "删除文件夹失败({}): {:#08x}",
+                "failed sceIoRmdir({}): {:#08x}",
                 path,
                 static_cast<uint32_t>(res));
 }
@@ -749,20 +764,60 @@ void pkgi_install_update(const char* contentid)
 {
     pkgi_mkdirs("ux0:patch");
 
-    char path[128];
-    snprintf(path, sizeof(path), "ux0:pkgi/%s", contentid);
+    const auto titleid = fmt::format("{:.9}", contentid + 7);
+    const auto src = fmt::format("ux0:pkgi/{}", contentid);
+    const auto dest = fmt::format("ux0:patch/{}", titleid);
 
-    char dest[128];
-    snprintf(dest, sizeof(dest), "ux0:patch/%.9s", contentid + 7);
-
-    LOG("deleting previous patch");
+    LOGF("deleting previous patch at {}", dest);
     pkgi_delete_dir(dest);
 
-    LOG("installing update at %s", path);
-    int res = sceIoRename(path, dest);
+    LOGF("installing update from {} to {}", src, dest);
+    const auto res = sceIoRename(src.c_str(), dest.c_str());
     if (res < 0)
-        throw std::runtime_error(fmt::format(
-                "重命名失败: {:#08x}", static_cast<uint32_t>(res)));
+        throw formatEx<std::runtime_error>(
+                "failed to rename: {:#08x}", static_cast<uint32_t>(res));
+
+    const auto sfo = pkgi_load(fmt::format("{}/sce_sys/param.sfo", dest));
+    const auto version = pkgi_sfo_get_string(sfo.data(), sfo.size(), "APP_VER");
+
+    LOGF("found version is {}", version);
+    if (version.empty())
+        throw std::runtime_error("no version field found in param.sfo");
+    if (version.size() != 5)
+        throw formatEx<std::runtime_error>(
+                "version field of incorrect size: {}", version.size());
+
+    SqlitePtr _sqliteDb;
+    sqlite3* raw_appdb;
+    SQLITE_CHECK(
+            sqlite3_open("ur0:shell/db/app.db", &raw_appdb),
+            "can't open app.db database");
+    _sqliteDb.reset(raw_appdb);
+
+    sqlite3_stmt* stmt;
+    SQLITE_CHECK(
+            sqlite3_prepare_v2(
+                    _sqliteDb.get(),
+                    R"(UPDATE tbl_appinfo
+                    SET val = ?
+                    WHERE titleId = ? AND key = 3168212510)",
+                    -1,
+                    &stmt,
+                    nullptr),
+            "can't prepare version update SQL statement");
+    BOOST_SCOPE_EXIT_ALL(&)
+    {
+        sqlite3_finalize(stmt);
+    };
+
+    sqlite3_bind_text(stmt, 1, version.data(), version.size(), nullptr);
+    sqlite3_bind_text(stmt, 2, titleid.data(), titleid.size(), nullptr);
+
+    const auto err = sqlite3_step(stmt);
+    if (err != SQLITE_DONE)
+        throw formatEx<std::runtime_error>(
+                "can't execute version update SQL statement:\n{}",
+                sqlite3_errmsg(_sqliteDb.get()));
 }
 
 void pkgi_install_pspgame(const char* partition, const char* contentid)
@@ -882,7 +937,7 @@ std::vector<uint8_t> pkgi_load(const std::string& path)
     SceUID fd = sceIoOpen(path.c_str(), SCE_O_RDONLY, 0777);
     if (fd < 0)
         throw std::runtime_error(fmt::format(
-                "IO错误:({}) 无法打开文件: {:#08x}",
+                "sceIoOpen({}) failed: {:#08x}",
                 path.c_str(),
                 static_cast<uint32_t>(fd)));
 
@@ -894,7 +949,7 @@ std::vector<uint8_t> pkgi_load(const std::string& path)
     const auto read = sceIoRead(fd, data.data(), data.size());
     if (read < 0)
         throw std::runtime_error(fmt::format(
-                "IO错误({}) 无法读取文件: {:#08x}",
+                "sceIoRead({}) failed: {:#08x}",
                 path.c_str(),
                 static_cast<uint32_t>(read)));
 
@@ -1023,7 +1078,7 @@ void pkgi_mkdirs(const char* ppath)
         int err = sceIoMkdir(path.c_str(), 0777);
         if (err < 0 && err != PKGI_ERRNO_EEXIST)
             throw std::runtime_error(fmt::format(
-                    "IO错误:无法创建文件夹({}) failed: {:#08x}",
+                    "sceIoMkdir({}) failed: {:#08x}",
                     path.c_str(),
                     static_cast<uint32_t>(err)));
         *ptr = last;
@@ -1063,7 +1118,7 @@ void pkgi_rename(const char* from, const char* to)
     int res = sceIoRename(from, to);
     if (res < 0)
         throw std::runtime_error(fmt::format(
-                "无法将 {} 重命名为 {}: {:#08x}",
+                "failed to rename from {} to {}: {:#08x}",
                 from,
                 to,
                 static_cast<uint32_t>(res)));
@@ -1112,13 +1167,13 @@ void* pkgi_append(const char* path)
     return (void*)(intptr_t)fd;
 }
 
-int pkgi_seek(void* f, uint64_t offset)
+int64_t pkgi_seek(void* f, uint64_t offset)
 {
-    LOG("seeking to %d", offset);
-    int pos = sceIoLseek((intptr_t)f, offset, SCE_SEEK_SET);
+    LOGF("seeking to {}", offset);
+    auto const pos = sceIoLseek((intptr_t)f, offset, SCE_SEEK_SET);
     if (pos < 0)
     {
-        LOG("seek error: %08x", pos);
+        LOGF("sceIoLseek failed: {:#016x}", pos);
         return -1;
     }
     return pos;
@@ -1171,7 +1226,7 @@ std::string pkgi_get_system_version()
     const auto res = _vshSblGetSystemSwVersion(&info);
     if (res < 0)
         throw std::runtime_error(fmt::format(
-                "获取系统软件版本信息失败: {:#08x}",
+                "sceKernelGetSystemSwVersion failed: {:#08x}",
                 static_cast<uint32_t>(res)));
     return info.versionString;
 }

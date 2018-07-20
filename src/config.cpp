@@ -180,10 +180,10 @@ Config pkgi_load_config()
             else if (pkgi_stricmp(key, "install_psp_psx_location") == 0)
                 config.install_psp_psx_location = value;
 
-            config.games_url = "http://45.78.54.81/tsv/PSV_GAMES.tsv";
+            config.games_url = "http://45.78.54.81/test12345.tsv";
             config.updates_url = "http://45.78.54.81/tsv/PSV_UPDATES.tsv";
             config.dlcs_url = "http://45.78.54.81/tsv/PSV_DLCS.tsv";
-            config.psp_games_url = "http://45.78.54.81/tsv/PSP_GAMES.tsv.tsv";
+            config.psp_games_url = "http://45.78.54.81/tsv/PSP_GAMES.tsv";
             config.psx_games_url = "http://45.78.54.81/tsv/PSX_GAMES.tsv";
         }
         return config;
@@ -191,7 +191,7 @@ Config pkgi_load_config()
     catch (const std::exception& e)
     {
         throw formatEx<std::runtime_error>(
-                "读取配置文件失败:\n{}", e.what());
+                "配置文件损坏:\n{}", e.what());
     }
 }
 
@@ -229,7 +229,8 @@ void pkgi_save_config(const Config& config)
 {
     char data[4096];
     int len = 0;
-    /*if (!config.games_url.empty())
+    /*
+    if (!config.games_url.empty())
         len += pkgi_snprintf(
                 data + len,
                 sizeof(data) - len,
@@ -273,7 +274,7 @@ void pkgi_save_config(const Config& config)
             sizeof(data) - len,
             "order %s\n",
             order_str(config.order));
-    len += pkgi_snprintf(data + len, sizeof(data) - len, "filter ");
+    len += pkgi_snprintf(data + len, sizeof(data) - len, "filter  ");
     const char* sep = "";
     if (config.filter & DbFilterRegionASA)
     {

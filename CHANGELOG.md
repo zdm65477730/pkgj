@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.30
+
+What's new:
+
+- Temporary data is now also deleted when deleting resume data after a resume
+    failure
+- Implemented update of Shell's database when installing an update so that
+    livearea doesn't say that an update is available when it's already installed
+
+Bug fixes:
+
+- Resume data is now deleted after a successful installation to avoid an error
+    when reinstalling
+
+## 0.29
+
+Bug fixes:
+
+- Fixed error when unsafe mode is not activated
+- Fixed downloading of games that contain a single file bigger than 2GB
+
 ## 0.28
 
 What's new:
