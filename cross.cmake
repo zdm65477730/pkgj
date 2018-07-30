@@ -27,10 +27,13 @@ add_executable(pkgj
   src/pkgi.cpp
   src/aes128.c
   src/config.cpp
+  src/comppackdb.cpp
   src/db.cpp
   src/dialog.cpp
   src/download.cpp
   src/downloader.cpp
+  src/extractzip.cpp
+  src/filedownload.cpp
   src/vitahttp.cpp
   src/menu.cpp
   src/sfo.cpp
@@ -46,6 +49,7 @@ target_link_libraries(pkgj
   CONAN_PKG::boost_scope_exit
   CONAN_PKG::vitasqlite
   CONAN_PKG::cereal
+  CONAN_PKG::libzip
   png
   z
   m

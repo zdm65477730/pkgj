@@ -2,7 +2,8 @@
 
 set -xe
 
-cd ci
+rm -fr ci/build ci/buildhost
+
 
 ./setup_conan.sh
 

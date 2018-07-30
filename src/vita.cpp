@@ -5,6 +5,7 @@ extern "C" {
 }
 #include "config.hpp"
 #include "db.hpp"
+#include "extractzip.hpp"
 #include "http.hpp"
 #include "sfo.hpp"
 
@@ -479,20 +480,6 @@ void pkgi_start(void)
     sceAppUtilSystemParamGetInt(
             SCE_SYSTEM_PARAM_ID_ENTER_BUTTON, (int*)&config.enterButtonAssign);
     sceCommonDialogSetConfigParam(&config);
-    if (!pkgi_file_exists("ux0:pkgi/config.txt"))
-    {
-        pkgi_create("ux0:pkgi/config.txt");
-        if (!pkgi_file_exists("ux0:pkgi/config.txt"))
-        {
-            pkgi_mkdirs("ux0:pkgi");
-            pkgi_create("ux0:pkgi/config.txt");
-        }
-        
-        auto data1 = "install_psp_psx_location ux0:\nsort title\norder asc\nfilter ASA,EUR,JPN,USA";
-        int length = sizeof(data1);
-        pkgi_save("ux0:pkgi/config.txt",data1,length);
-
-    }
 
     if (config.enterButtonAssign == SCE_SYSTEM_PARAM_ENTER_BUTTON_CIRCLE)
     {
@@ -526,9 +513,31 @@ void pkgi_start(void)
         sceKernelStartThread(power_thread, 0, NULL);
     }
 
+    if (!pkgi_file_exists("ux0:pkgi/config.txt"))
+    {
+        pkgi_create("ux0:pkgi/config.txt");
+        if (!pkgi_file_exists("ux0:pkgi/config.txt"))
+        {
+            pkgi_mkdirs("ux0:pkgi");
+            pkgi_create("ux0:pkgi/config.txt");
+        }
+        
+        auto data1 = "install_psp_psx_location ux0:\nsort title\norder asc\nfilter ASA,EUR,JPN,USA";
+        int length = sizeof(data1);
+        pkgi_save("ux0:pkgi/config.txt",data1,length);
+
+    }
     vita2d_init_advanced(4 * 1024 * 1024);
-    //g_font = vita2d_load_default_pgf();
-    g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00000/font.pgf");
+    if (pkgi_file_exists("ux0:app/PKGJ00000/font.pgf"))
+    {
+        g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00000/font.pgf");
+    }
+    else
+    {
+        g_font = vita2d_load_default_pgf();
+    }
+    
+
     g_time = sceKernelGetProcessTimeWide();
 
     sqlite3_rw_init();
@@ -663,6 +672,26 @@ int pkgi_is_installed(const char* titleid)
     return res == 0;
 }
 
+bool pkgi_update_is_installed(
+        const std::string& titleid, const std::string& request_version)
+{
+    const auto patch_dir = fmt::format("ux0:patch/{}", titleid);
+
+    if (!pkgi_file_exists(patch_dir.c_str()))
+        return false;
+
+    const auto sfo = pkgi_load(fmt::format("{}/sce_sys/param.sfo", patch_dir));
+    const auto installed_version =
+            pkgi_sfo_get_string(sfo.data(), sfo.size(), "APP_VER");
+
+    const auto full_request_version = fmt::format("{:0>5}", request_version);
+
+    if (installed_version != full_request_version)
+        return false;
+
+    return true;
+}
+
 int pkgi_dlc_is_installed(const char* content)
 {
     return pkgi_file_exists(
@@ -701,7 +730,7 @@ void pkgi_install(const char* contentid)
                 "scePromoterUtilityPromotePkgWithRif failed: {:#08x}\n{}",
                 static_cast<uint32_t>(res),
                 static_cast<uint32_t>(res) == 0x80870004
-                        ? "Please check your NoNpDrm installation"
+                        ? "请检查NoNpDrm安装情况"
                         : "");
 }
 
@@ -782,10 +811,10 @@ void pkgi_install_update(const char* contentid)
 
     LOGF("found version is {}", version);
     if (version.empty())
-        throw std::runtime_error("no version field found in param.sfo");
+        throw std::runtime_error("param.sfo文件错误:未找到版本定义");
     if (version.size() != 5)
         throw formatEx<std::runtime_error>(
-                "version field of incorrect size: {}", version.size());
+                "param.sfo文件错误:版本文件大小错误: {}", version.size());
 
     SqlitePtr _sqliteDb;
     sqlite3* raw_appdb;
@@ -816,8 +845,21 @@ void pkgi_install_update(const char* contentid)
     const auto err = sqlite3_step(stmt);
     if (err != SQLITE_DONE)
         throw formatEx<std::runtime_error>(
-                "can't execute version update SQL statement:\n{}",
+                "无法执行数据库版本更新语句:\n{}",
                 sqlite3_errmsg(_sqliteDb.get()));
+}
+
+void pkgi_install_comppack(const char* titleid)
+{
+    const auto src = fmt::format("ux0:pkgi/{}-comp.ppk", titleid);
+    const auto dest = fmt::format("ux0:rePatch/{}", titleid);
+
+    pkgi_mkdirs(dest.c_str());
+
+    pkgi_mkdirs(dest.c_str());
+
+    LOGF("installing comp pack from {} to {}", src, dest);
+    pkgi_extract_zip(src, dest);
 }
 
 void pkgi_install_pspgame(const char* partition, const char* contentid)

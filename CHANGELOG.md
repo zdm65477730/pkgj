@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.32
+
+What's new:
+
+- Added support for downloading patches compatibility packs. No changes to
+    config.txt
+- Added app version and required firmware on game update list
+- When updates are installed, they now correctly appear as a white bullet
+- New LiveArea design from JesterIOS
+
+Bug fixes:
+
+- Sort by date option is now correctly saved to configuration
+
+## 0.31
+
+What's new:
+
+- Added support for downloading compatibility packs with the `url_comppack`
+    configuration option
+- All games are now listed, reguardless of firmware version
+
 ## 0.30
 
 What's new:

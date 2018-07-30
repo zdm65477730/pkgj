@@ -34,9 +34,13 @@ Setup games databases URLs in `ux0:pkgi/config.txt`. The file format is the foll
     url_dlcs http://thesite/dlcs.tsv
     url_psx_games http://thesite/psxgames.tsv
     url_psp_games http://thesite/pspgames.tsv
+    url_comppack http://thesite/comppack/
 
 **Attention:** The PS Vita has an imcomplete HTTPS support and most sites will not
 work, prefer HTTP in these cases.
+
+The `url_comppack` URL must point to the folder containing the `entries.txt`
+file.
 
 Make sure unsafe mode is enabled in Henkaku settings.
 
@@ -99,11 +103,15 @@ Press left or right button to move page up or down.
 
 # Building
 
-You need to have [Vita SDK][vitasdk] with [libvita2d][] installed.
+pkgj uses conan and cmake to build. The setup is a bit tedious, so the
+recommended way is to run ci/ci.sh. It will create a Python virtualenv with
+conan, setup the configuration for cross-compilation, register some recipes,
+and then run cmake and build pkgj for your vita and pkgj_cli for testing.
 
-Run `cmake .` to create debug build, or `cmake -DCMAKE_BUILD_TYPE=Release .` to create optimized release build.
+pkgj will be built in ci/build, you can rebuild it anytime you want by running
+ninja in that same directory.
 
-After than run `make` to create vpk file. You can set environment variable `PSVITAIP` (before running cmake) to IP address of
+You can set environment variable `PSVITAIP` (before running cmake) to IP address of
 Vita, that will allow to use `make send` for sending eboot.bin file directly to `ux0:app/PKGI00000` folder.
 
 To enable debugging logging pass `-DPKGI_ENABLE_LOGGING=ON` argument to cmake. Then application will send debug messages to

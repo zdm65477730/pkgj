@@ -7,7 +7,7 @@
 class HttpError : public std::exception
 {
 public:
-    HttpError(std::string msg) : _msg("HttpError: " + std::move(msg))
+    HttpError(std::string msg) : _msg("HTTP错误:" + std::move(msg))
     {
     }
 

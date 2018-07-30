@@ -1,5 +1,8 @@
+#include "comppackdb.hpp"
 #include "db.hpp"
 #include "download.hpp"
+#include "extractzip.hpp"
+#include "filedownload.hpp"
 #include "filehttp.hpp"
 extern "C" {
 #include "zrif.h"
@@ -13,7 +16,7 @@ extern "C" {
 
 static constexpr auto USAGE =
         "Usage: %s [extract <filename> <zrif> <sha256>] [refreshlist PSV "
-        "url]\n";
+        "path] [refreshcomppack path] [filedownload path]\n";
 
 int extract(int argc, char* argv[])
 {
@@ -34,7 +37,7 @@ int extract(int argc, char* argv[])
     Download d(std::make_unique<FileHttp>());
 
     d.save_as_iso = false;
-    d.update_progress_cb = [](const Download&) {};
+    d.update_progress_cb = [](uint64_t, uint64_t) {};
     d.update_status = [](auto&&) {};
     d.is_canceled = [] { return false; };
 
@@ -42,6 +45,35 @@ int extract(int argc, char* argv[])
             "tmp", argv[2], argv[2], argv[3][0] ? rif : nullptr, digest.data());
 
     return 0;
+}
+
+Mode arg_to_mode(std::string const& arg)
+{
+    if (arg == "PSVGAMES")
+        return ModeGames;
+    else if (arg == "PSVUPDATES")
+        return ModeUpdates;
+    else
+        throw std::runtime_error("unsupported arg: " + arg);
+}
+
+std::string modeToDbName(Mode mode)
+{
+    switch (mode)
+    {
+    case ModeGames:
+        return "pkgj_games.db";
+    case ModeDlcs:
+        return "pkgj_dlcs.db";
+    case ModeUpdates:
+        return "pkgj_updates.db";
+    case ModePspGames:
+        return "pkgj_pspgames.db";
+    case ModePsxGames:
+        return "pkgj_psxgames.db";
+    }
+    throw std::runtime_error(
+            fmt::format("unknown mode: {}", static_cast<int>(mode)));
 }
 
 int refreshlist(int argc, char* argv[])
@@ -52,14 +84,62 @@ int refreshlist(int argc, char* argv[])
         return 1;
     }
 
-    auto const http = std::make_unique<FileHttp>();
+    const auto http = std::make_unique<FileHttp>();
 
-    auto db = std::make_unique<TitleDatabase>(ModeGames, "db.db");
+    const auto mode = arg_to_mode(argv[2]);
+
+    const auto db = std::make_unique<TitleDatabase>(mode, modeToDbName(mode));
     db->update(http.get(), argv[3]);
-    db->reload("3.65", DbFilterAllRegions, SortBySize, SortDescending, "the");
+    db->reload(DbFilterAllRegions, SortBySize, SortDescending, "the");
     for (unsigned int i = 0; i < db->count(); ++i)
         fmt::print("{}: {}\n", db->get(i)->name, db->get(i)->size);
     fmt::print("{}/{}\n", db->count(), db->total());
+
+    return 0;
+}
+
+int refreshcomppack(int argc, char* argv[])
+{
+    if (argc != 3)
+    {
+        printf(USAGE, argv[0]);
+        return 1;
+    }
+
+    const auto http = std::make_unique<FileHttp>();
+
+    const auto db = std::make_unique<CompPackDatabase>("comppack.db");
+    db->update(http.get(), argv[2]);
+    const auto item = db->get("PCSA00134").value();
+    fmt::print("got {} {}\n", item.path, item.app_version);
+
+    return 0;
+}
+
+int filedownload(int argc, char* argv[])
+{
+    if (argc != 3)
+    {
+        printf(USAGE, argv[0]);
+        return 1;
+    }
+
+    FileDownload d(std::make_unique<FileHttp>());
+
+    d.download("tmp", "id", argv[2]);
+
+    return 0;
+}
+
+int extractzip(int argc, char* argv[])
+{
+    if (argc != 3)
+    {
+        printf(USAGE, argv[0]);
+        return 1;
+    }
+
+    pkgi_extract_zip(argv[2], "tmp");
 
     return 0;
 }
@@ -76,6 +156,12 @@ int main(int argc, char* argv[])
         return extract(argc, argv);
     if (std::string(argv[1]) == "refreshlist")
         return refreshlist(argc, argv);
+    if (std::string(argv[1]) == "refreshcomppack")
+        return refreshcomppack(argc, argv);
+    if (std::string(argv[1]) == "filedownload")
+        return filedownload(argc, argv);
+    if (std::string(argv[1]) == "extractzip")
+        return extractzip(argc, argv);
 
     printf(USAGE, argv[0]);
     return 1;

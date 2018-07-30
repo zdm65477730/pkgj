@@ -262,6 +262,7 @@ int pkgi_save(const char* name, const void* data, uint32_t size)
 
 void* pkgi_create(const char* path)
 {
+    LOGF("pkgi_create {}", path);
     int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
     {
@@ -292,7 +293,11 @@ int pkgi_read(void* f, void* buffer, uint32_t size)
 
 int pkgi_write(void* f, const void* buffer, uint32_t size)
 {
-    return write((intptr_t)f, buffer, size);
+    const auto wrote = write((intptr_t)f, buffer, size);
+    if (wrote < 0)
+        throw formatEx<std::runtime_error>(
+                "无法写入到 file:\n{}", strerror(errno));
+    return wrote;
 }
 
 void pkgi_close(void* f)

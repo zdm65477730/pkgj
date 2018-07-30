@@ -38,6 +38,10 @@ static DbSort parse_sort(const char* value, DbSort sort)
     {
         return SortBySize;
     }
+    else if (pkgi_stricmp(value, "date") == 0)
+    {
+        return SortByDate;
+    }
     else
     {
         return sort;
@@ -167,6 +171,8 @@ Config pkgi_load_config()
                 config.psx_games_url = value;
             else if (pkgi_stricmp(key, "url_psp_games") == 0)
                 config.psp_games_url = value;
+            else if (pkgi_stricmp(key, "url_comppack") == 0)
+                config.comppack_url = value;
             else if (pkgi_stricmp(key, "sort") == 0)
                 config.sort = parse_sort(value, SortByName);
             else if (pkgi_stricmp(key, "order") == 0)
@@ -179,19 +185,20 @@ Config pkgi_load_config()
                 config.install_psp_as_pbp = 1;
             else if (pkgi_stricmp(key, "install_psp_psx_location") == 0)
                 config.install_psp_psx_location = value;
-
-            config.games_url = "http://45.78.54.81/test12345.tsv";
-            config.updates_url = "http://45.78.54.81/tsv/PSV_UPDATES.tsv";
-            config.dlcs_url = "http://45.78.54.81/tsv/PSV_DLCS.tsv";
-            config.psp_games_url = "http://45.78.54.81/tsv/PSP_GAMES.tsv";
-            config.psx_games_url = "http://45.78.54.81/tsv/PSX_GAMES.tsv";
         }
+
+        config.games_url = "http://45.78.54.81/test12345.tsv";
+        config.updates_url = "http://45.78.54.81/tsv/PSV_UPDATES.tsv";
+        config.dlcs_url = "http://45.78.54.81/tsv/PSV_DLCS.tsv";
+        config.psp_games_url = "http://45.78.54.81/tsv/PSP_GAMES.tsv";
+        config.psx_games_url = "http://45.78.54.81/tsv/PSX_GAMES.tsv";
+        config.comppack_url = "https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/entries.txt";
         return config;
     }
     catch (const std::exception& e)
     {
         throw formatEx<std::runtime_error>(
-                "配置文件损坏:\n{}", e.what());
+                "配置文件读取失败:\n{}", e.what());
     }
 }
 
@@ -207,9 +214,10 @@ static const char* sort_str(DbSort sort)
         return "name";
     case SortBySize:
         return "size";
-    default:
-        return "";
+    case SortByDate:
+        return "date";
     }
+    return "";
 }
 
 static const char* order_str(DbSortOrder order)
@@ -220,16 +228,14 @@ static const char* order_str(DbSortOrder order)
         return "asc";
     case SortDescending:
         return "desc";
-    default:
-        return "";
     }
+    return "";
 }
 
 void pkgi_save_config(const Config& config)
 {
     char data[4096];
     int len = 0;
-    /*
     if (!config.games_url.empty())
         len += pkgi_snprintf(
                 data + len,
@@ -260,7 +266,12 @@ void pkgi_save_config(const Config& config)
                 sizeof(data) - len,
                 "url_psp_games %s\n",
                 config.psp_games_url.c_str());
-    */
+    if (!config.comppack_url.empty())
+        len += pkgi_snprintf(
+                data + len,
+                sizeof(data) - len,
+                "url_comppack %s\n",
+                config.comppack_url.c_str());
     if (!config.install_psp_psx_location.empty())
         len += pkgi_snprintf(
                 data + len,
@@ -274,7 +285,7 @@ void pkgi_save_config(const Config& config)
             sizeof(data) - len,
             "order %s\n",
             order_str(config.order));
-    len += pkgi_snprintf(data + len, sizeof(data) - len, "filter  ");
+    len += pkgi_snprintf(data + len, sizeof(data) - len, "filter ");
     const char* sep = "";
     if (config.filter & DbFilterRegionASA)
     {

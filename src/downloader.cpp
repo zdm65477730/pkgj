@@ -3,6 +3,7 @@
 #include <boost/scope_exit.hpp>
 
 #include "download.hpp"
+#include "filedownload.hpp"
 #include "vitahttp.hpp"
 
 #include <fmt/format.h>
@@ -21,6 +22,8 @@ std::string type_to_string(Type type)
         return "PSX game";
     case Type::PspGame:
         return "PSP game";
+    case Type::CompPack:
+        return "Comp Pack";
     }
     return "unknown";
 }
@@ -128,7 +131,7 @@ void Downloader::run()
     }
 }
 
-void Downloader::do_download(const DownloadItem& item)
+void Downloader::do_download_package(const DownloadItem& item)
 {
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -139,9 +142,10 @@ void Downloader::do_download(const DownloadItem& item)
     LOG("downloading %s", item.name.c_str());
     auto download = std::make_unique<Download>(std::make_unique<VitaHttp>());
     download->save_as_iso = item.save_as_iso;
-    download->update_progress_cb = [this](const Download& d) {
-        _download_offset = d.download_offset;
-        _download_size = d.download_size;
+    download->update_progress_cb = [this](uint64_t download_offset,
+                                          uint64_t download_size) {
+        _download_offset = download_offset;
+        _download_size = download_size;
     };
     download->update_status = [](auto&&) {};
     download->is_canceled = [this] { return _cancel_current || _dying; };
@@ -172,9 +176,43 @@ void Downloader::do_download(const DownloadItem& item)
     case PsxGame:
         pkgi_install_pspgame(item.partition.c_str(), item.content.c_str());
         break;
+    case CompPack:
+        throw std::runtime_error(
+                "无法处理下载文件与PPK文件");
     }
     pkgi_rm(fmt::format("{}pkgi/{}.resume", item.partition, item.content)
                     .c_str());
     pkgi_delete_dir(fmt::format("{}pkgi/{}", item.partition, item.content));
     LOG("install of %s completed!", item.name.c_str());
+}
+
+void Downloader::do_download_comppack(const DownloadItem& item)
+{
+    ScopeProcessLock _;
+    LOGF("downloading comppack {}", item.url);
+    auto download =
+            std::make_unique<FileDownload>(std::make_unique<VitaHttp>());
+
+    download->update_progress_cb = [this](uint64_t download_offset,
+                                          uint64_t download_size) {
+        _download_offset = download_offset;
+        _download_size = download_size;
+    };
+    download->is_canceled = [this] { return _cancel_current || _dying; };
+
+    download->download(
+            item.partition.c_str(), item.content.c_str(), item.url.c_str());
+    LOGF("download of comppack {} completed!", item.url);
+    pkgi_install_comppack(item.content.c_str());
+    pkgi_rm(fmt::format("{}pkgi/{}-comp.ppk", item.partition, item.content)
+                    .c_str());
+    LOG("install of %s completed!", item.name.c_str());
+}
+
+void Downloader::do_download(const DownloadItem& item)
+{
+    if (item.type == CompPack)
+        do_download_comppack(item);
+    else
+        do_download_package(item);
 }

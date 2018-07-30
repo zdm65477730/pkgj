@@ -40,7 +40,7 @@ VitaHttp::~VitaHttp()
 void VitaHttp::start(const std::string& url, uint64_t offset)
 {
     if (_http)
-        throw HttpError("HTTP connection already started");
+        throw HttpError("网络错误:HTTP连接已经开始");
 
     LOG("http get");
 
@@ -55,7 +55,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     }
 
     if (!http)
-        throw HttpError("internal error: too many simultaneous http requests");
+        throw HttpError("内部错误:HTTP连接过多");
 
     int tmpl = -1;
     int conn = -1;
@@ -115,8 +115,8 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
                 "sceHttpSendRequest failed: {:#08x}\n{}",
                 static_cast<uint32_t>(err),
                 static_cast<uint32_t>(err) == 0x80431075
-                        ? "HTTPS URLs may not be supported on your "
-                          "device.\nTry with HTTP."
+                        ? "请使用HTTP链接代替HTTPS连接"
+                          ""
                         : "");
 
     http->used = 1;
@@ -133,7 +133,7 @@ int64_t VitaHttp::read(uint8_t* buffer, uint64_t size)
     int read = sceHttpReadData(_http->req, buffer, size);
     if (read < 0)
         throw HttpError(fmt::format(
-                "HTTP download error {:#08x}",
+                "网络错误:下载失败 {:#08x}",
                 static_cast<uint32_t>(static_cast<int32_t>(read))));
     return read;
 }
@@ -151,14 +151,6 @@ int64_t VitaHttp::get_length()
 
     if (status != 200 && status != 206)
         throw HttpError(fmt::format("bad http status: {}", status));
-
-    char* headers;
-    unsigned int size;
-    if (sceHttpGetAllResponseHeaders(_http->req, &headers, &size) >= 0)
-    {
-        LOG("response headers:");
-        LOG("%.*s", (int)size, headers);
-    }
 
     uint64_t content_length;
     res = sceHttpGetResponseContentLength(_http->req, &content_length);

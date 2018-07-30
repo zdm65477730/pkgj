@@ -92,7 +92,8 @@ void TitleDatabase::reopen()
                         _sqliteDb.get(),
                         R"(
                         SELECT id, content, name, name_org, zrif, url,
-                            digest, size, fw_version, last_modification, region
+                            digest, size, fw_version, last_modification, region,
+                            app_version
                         FROM titles
                         WHERE 0)",
                         -1,
@@ -122,7 +123,8 @@ void TitleDatabase::reopen()
             size INT,
             fw_version TEXT,
             last_modification DATETIME,
-            region TEXT NOT NULL
+            region TEXT NOT NULL,
+            app_version TEXT
         ))", "can't create table");
 }
 
@@ -163,6 +165,7 @@ enum class Column
     Content,
     Name,
     NameOrg,
+    AppVersion,
     Zrif,
     Url,
     Digest,
@@ -192,14 +195,17 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(Size, 8);
             MAP_COL(Digest, 9);
             MAP_COL(FwVersion, 10);
+            MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("无效分卷");
         }
     case ModeUpdates:
         switch (column)
         {
             MAP_COL(Region, 1);
             MAP_COL(Name, 2);
+            MAP_COL(AppVersion, 3);
+            MAP_COL(FwVersion, 4);
             MAP_COL(Url, 5);
             MAP_COL(LastModification, 7);
             MAP_COL(Size, 8);
@@ -207,9 +213,8 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(Content, -1);
             MAP_COL(NameOrg, -1);
             MAP_COL(Zrif, -1);
-            MAP_COL(FwVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("无效分卷");
         }
     case ModeDlcs:
         switch (column)
@@ -224,8 +229,9 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(Digest, 8);
             MAP_COL(NameOrg, -1);
             MAP_COL(FwVersion, -1);
+            MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("无效分卷");
         }
     case ModePsxGames:
         switch (column)
@@ -240,8 +246,9 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(Digest, 8);
             MAP_COL(Zrif, -1);
             MAP_COL(FwVersion, -1);
+            MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("无效分卷");
         }
     case ModePspGames:
         switch (column)
@@ -256,11 +263,12 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, -1);
             MAP_COL(NameOrg, -1);
             MAP_COL(Zrif, -1);
+            MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("无效分卷");
         }
     default:
-        throw std::runtime_error("invalid mode");
+        throw std::runtime_error("无效模式");
     }
 #undef MAP_COL
 }
@@ -300,8 +308,8 @@ void TitleDatabase::parse_tsv_file(std::string& db_data)
             sqlite3_prepare_v2(
                     _sqliteDb.get(),
                     R"(INSERT INTO titles
-                    (content, name, name_org, zrif, url, digest, size, fw_version, last_modification, region)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?))",
+                    (content, name, name_org, zrif, url, digest, size, fw_version, last_modification, region, app_version)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?))",
                     -1,
                     &stmt,
                     nullptr),
@@ -339,6 +347,8 @@ void TitleDatabase::parse_tsv_file(std::string& db_data)
                     get_or_empty(mode, fields, Column::FwVersion);
             const auto last_modification =
                     get_or_empty(mode, fields, Column::LastModification);
+            const auto app_version =
+                    get_or_empty(mode, fields, Column::AppVersion);
 
             if (*url == '\0' || std::string(url) == "MISSING" ||
                 std::string(url) == "CART ONLY" ||
@@ -386,17 +396,19 @@ void TitleDatabase::parse_tsv_file(std::string& db_data)
                     strlen(last_modification),
                     nullptr);
             sqlite3_bind_text(stmt, 10, region, strlen(region), nullptr);
+            sqlite3_bind_text(
+                    stmt, 11, app_version, strlen(app_version), nullptr);
 
             auto err = sqlite3_step(stmt);
             if (err != SQLITE_DONE)
                 throw std::runtime_error(fmt::format(
-                        "can't execute SQL statement:\n{}",
+                        "无法执行SQL语句:\n{}",
                         sqlite3_errmsg(_sqliteDb.get())));
         }
         catch (const std::exception& e)
         {
             throw formatEx<std::runtime_error>(
-                    "failed to parse line\n{}\n{}", ptr, e.what());
+                    "无法解析数据\n{}\n{}", ptr, e.what());
         }
     }
 }
@@ -409,7 +421,7 @@ void TitleDatabase::update(Http* http, const char* update_url)
     db_size = 0;
 
     if (update_url[0] == 0)
-        throw std::runtime_error("no update url");
+        throw std::runtime_error("没有数据库地址");
 
     LOG("loading update from %s", update_url);
 
@@ -419,7 +431,7 @@ void TitleDatabase::update(Http* http, const char* update_url)
 
     if (length > (int64_t)db_data.size() - 1)
         throw std::runtime_error(
-                "list is too large... check for newer pkgj version");
+                "列表过长");
 
     if (length != 0)
         db_total = (uint32_t)length;
@@ -436,7 +448,7 @@ void TitleDatabase::update(Http* http, const char* update_url)
 
     if (db_size == 0)
         throw std::runtime_error(
-                "list is empty... check for newer pkgi version");
+                "PPK包列表为空");
 
     LOG("parsing items");
 
@@ -461,7 +473,7 @@ const char* region_to_quoted_string(GameRegion region)
     case RegionUSA:
         return "'US'";
     default:
-        throw std::runtime_error(fmt::format("unknown region {}", (int)region));
+        throw std::runtime_error(fmt::format("未知区域 {}", (int)region));
     }
 }
 
@@ -510,7 +522,7 @@ bool lower(const DbItem& a, const DbItem& b, DbSort sort, DbSortOrder order)
     else if (sort == SortByDate)
         cmp = a.date.compare(b.date);
     else
-        throw std::runtime_error(fmt::format("unknown sort order {}", sort));
+        throw std::runtime_error(fmt::format("未知检索顺序", sort));
 
     if (cmp == 0)
         cmp = a.titleid.compare(b.titleid);
@@ -523,7 +535,6 @@ bool lower(const DbItem& a, const DbItem& b, DbSort sort, DbSortOrder order)
 }
 
 void TitleDatabase::reload(
-        const std::string& max_fw_version,
         uint32_t region_filter,
         DbSort sort_by,
         DbSortOrder sort_order,
@@ -537,8 +548,8 @@ void TitleDatabase::reload(
 
     std::string query =
             "SELECT id, content, name, name_org, zrif, url, digest, size, "
-            "last_modification "
-            "FROM titles WHERE fw_version <= ? ";
+            "last_modification, app_version, fw_version "
+            "FROM titles WHERE 1 ";
 
     if ((region_filter & DbFilterAllRegions) != DbFilterAllRegions)
         query += " AND region IN (" +
@@ -556,12 +567,10 @@ void TitleDatabase::reload(
         sqlite3_finalize(stmt);
     };
 
-    sqlite3_bind_text(
-            stmt, 1, max_fw_version.data(), max_fw_version.size(), nullptr);
     if (!search.empty())
     {
         const auto like = '%' + search + '%';
-        sqlite3_bind_text(stmt, 2, like.data(), like.size(), SQLITE_TRANSIENT);
+        sqlite3_bind_text(stmt, 1, like.data(), like.size(), SQLITE_TRANSIENT);
     }
 
     LOG("filling memory cache");
@@ -574,12 +583,12 @@ void TitleDatabase::reload(
             break;
         if (err != SQLITE_ROW)
             throw std::runtime_error(fmt::format(
-                    "can't execute SQL statement:\n{}",
+                    "无法执行SQL语句:\n{}",
                     sqlite3_errmsg(_sqliteDb.get())));
 
         std::string content =
                 reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-        const char* name =
+        const std::string name =
                 reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
         const char* name_org =
                 reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
@@ -599,13 +608,23 @@ void TitleDatabase::reload(
         const auto size = sqlite3_column_int64(stmt, 7);
         const char* date =
                 reinterpret_cast<const char*>(sqlite3_column_text(stmt, 8));
+        const std::string app_version =
+                reinterpret_cast<const char*>(sqlite3_column_text(stmt, 9));
+        const std::string fw_version =
+                reinterpret_cast<const char*>(sqlite3_column_text(stmt, 10));
+
+        std::string full_name = name;
+        if (!app_version.empty())
+            full_name = fmt::format("{} ({})", name, app_version);
+        if (!name.empty() && name.back() != ']' && fw_version > "3.60")
+            full_name = fmt::format("{} [{}]", full_name, fw_version);
 
         db.push_back(DbItem{
                 PresenceUnknown,
                 content.size() >= 7 + 9 ? content.substr(7, 9) : "",
                 content,
                 0,
-                name,
+                full_name,
                 name_org ? name_org : "",
                 zrif ? zrif : "",
                 url,
@@ -613,6 +632,7 @@ void TitleDatabase::reload(
                 bdigest ? digest : std::array<uint8_t, 32>{},
                 size,
                 date,
+                app_version,
         });
     }
 

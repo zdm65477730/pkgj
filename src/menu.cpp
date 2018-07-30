@@ -24,6 +24,7 @@ typedef enum {
     MenuSort,
     MenuFilter,
     MenuRefresh,
+    MenuRefreshCompPack,
     MenuShow,
 } MenuType;
 
@@ -35,34 +36,30 @@ typedef struct
 } MenuEntry;
 
 static const MenuEntry menu_entries[] = {
-
-
-
         {MenuSearch, "搜索...", 0},
         {MenuSearchClear, PKGI_UTF8_CLEAR " 清除", 0},
 
-        {MenuText, "排列顺序:", 0},
-        {MenuSort, "标题", SortByTitle},
+        {MenuText, "排序方式:", 0},
+        {MenuSort, "序列号", SortByTitle},
         {MenuSort, "地区", SortByRegion},
         {MenuSort, "游戏名", SortByName},
-        {MenuSort, "大小", SortBySize},
-        {MenuSort, "日期", SortByDate},
+        {MenuSort, "游戏容量", SortBySize},
+        {MenuSort, "发布日期", SortByDate},
 
-        {MenuText, "地区:", 0},
-        {MenuFilter, "亚洲", DbFilterRegionASA},
-        {MenuFilter, "欧洲", DbFilterRegionEUR},
-        {MenuFilter, "日本", DbFilterRegionJPN},
-        {MenuFilter, "美洲", DbFilterRegionUSA},
+        {MenuText, "地区筛选:", 0},
+        {MenuFilter, "亚服", DbFilterRegionASA},
+        {MenuFilter, "欧服", DbFilterRegionEUR},
+        {MenuFilter, "日服", DbFilterRegionJPN},
+        {MenuFilter, "美服", DbFilterRegionUSA},
 
         {MenuRefresh, "刷新", 0},
+        {MenuRefreshCompPack, "刷新PPK包", 0},
 
-        {MenuShow, "PSV游戏", 1},
-        {MenuShow, "PSV游戏更新", 2},
-        {MenuShow, "PSV游戏DLC", 4},
+        {MenuShow, "游戏", 1},
+        {MenuShow, "更新", 2},
+        {MenuShow, "DLC", 4},
         {MenuShow, "PSX游戏", 8},
         {MenuShow, "PSP游戏", 16},
-
-        
 };
 
 int pkgi_menu_is_open(void)
@@ -192,6 +189,12 @@ int pkgi_do_menu(pkgi_input* input)
             menu_delta = -1;
             return 1;
         }
+        if (type == MenuRefreshCompPack)
+        {
+            menu_result = MenuResultRefreshCompPack;
+            menu_delta = -1;
+            return 1;
+        }
         else if (type == MenuShow)
         {
             switch (menu_entries[menu_selected].value)
@@ -276,7 +279,8 @@ int pkgi_do_menu(pkgi_input* input)
 
         char text[64];
         if (type == MenuSearch || type == MenuSearchClear || type == MenuText ||
-            type == MenuRefresh || type == MenuShow)
+            type == MenuRefresh || type == MenuRefreshCompPack ||
+            type == MenuShow)
         {
             pkgi_strncpy(text, sizeof(text), entry->text);
         }

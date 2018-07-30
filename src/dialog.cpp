@@ -63,9 +63,11 @@ void pkgi_dialog_message(const char* text)
 
 void pkgi_dialog_error(const char* text)
 {
+    LOGF("Error dialog: {}", text);
+
     pkgi_dialog_lock();
 
-    pkgi_strncpy(dialog_title, sizeof(dialog_title), "ERROR");
+    pkgi_strncpy(dialog_title, sizeof(dialog_title), "错误");
     pkgi_strncpy(dialog_text, sizeof(dialog_text), text);
     dialog_extra[0] = 0;
 
@@ -238,7 +240,7 @@ void pkgi_do_dialog(pkgi_input* input)
         pkgi_snprintf(
                 text,
                 sizeof(text),
-                "press %s to close",
+                "按下 %s 关闭",
                 pkgi_ok_button() == PKGI_BUTTON_X ? PKGI_UTF8_X : PKGI_UTF8_O);
         pkgi_draw_text(
                 (VITA_WIDTH - pkgi_text_width(text)) / 2,
