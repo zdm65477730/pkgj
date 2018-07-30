@@ -55,7 +55,7 @@ void FileDownload::download_data(uint32_t size)
         {
             const int read = _http->read(buffer.data() + pos, size - pos);
             if (read == 0)
-                throw DownloadError(HTTP连接关闭,请检查网络");
+                throw DownloadError("HTTP连接关闭,请检查网络");
             pos += read;
         }
     }

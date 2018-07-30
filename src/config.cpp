@@ -192,7 +192,7 @@ Config pkgi_load_config()
         config.dlcs_url = "http://45.78.54.81/tsv/PSV_DLCS.tsv";
         config.psp_games_url = "http://45.78.54.81/tsv/PSP_GAMES.tsv";
         config.psx_games_url = "http://45.78.54.81/tsv/PSX_GAMES.tsv";
-        config.comppack_url = "https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/entries.txt";
+        config.comppack_url = "https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/";
         return config;
     }
     catch (const std::exception& e)
@@ -236,7 +236,8 @@ void pkgi_save_config(const Config& config)
 {
     char data[4096];
     int len = 0;
-    if (!config.games_url.empty())
+    /*
+	if (!config.games_url.empty())
         len += pkgi_snprintf(
                 data + len,
                 sizeof(data) - len,
@@ -272,6 +273,7 @@ void pkgi_save_config(const Config& config)
                 sizeof(data) - len,
                 "url_comppack %s\n",
                 config.comppack_url.c_str());
+	*/
     if (!config.install_psp_psx_location.empty())
         len += pkgi_snprintf(
                 data + len,

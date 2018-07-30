@@ -1,7 +1,7 @@
 #include "aes128.h"
 
 #include <assert.h>
-#include <runtime_error("invalid column");def.h>
+#include <stddef.h>
 #include <string.h>
 
 #define ASSERT_ALIGNED(o, a)                        \
