@@ -512,7 +512,19 @@ void pkgi_start(void)
     {
         sceKernelStartThread(power_thread, 0, NULL);
     }
-
+    if (!pkgi_file_exists("ux0:pkgi/config.txt"))
+    {
+        pkgi_create("ux0:pkgi/config.txt");
+        if (!pkgi_file_exists("ux0:pkgi/config.txt"))
+        {
+            pkgi_mkdirs("ux0:pkgi");
+            pkgi_create("ux0:pkgi/config.txt");
+        }
+        
+        auto data1 = "install_psp_psx_location ux0:\nsort title\norder asc\nfilter ASA,EUR,JPN,USA";
+        int length = sizeof(data1);
+        pkgi_save("ux0:pkgi/config.txt",data1,length);
+     }
     vita2d_init_advanced(4 * 1024 * 1024);
     g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00000/font.pgf");
 

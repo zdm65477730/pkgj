@@ -379,7 +379,7 @@ void Download::download_data(
         uint8_t* buffer, uint32_t size, int encrypted, int save)
 {
     if (is_canceled())
-        throw std::runtime_error("download was canceled");
+        throw std::runtime_error("下载被用户取消");
 
     if (size == 0)
         return;
@@ -394,7 +394,7 @@ void Download::download_data(
         const int64_t http_length = _http->get_length();
         if (http_length < 0)
         {
-            throw DownloadError("HTTP response has unknown length");
+            throw DownloadError("HTTP返回长度未知(get_length method)");
         }
 
         download_size = http_length + download_offset;
@@ -412,7 +412,7 @@ void Download::download_data(
         {
             const int read = _http->read(buffer + pos, size - pos);
             if (read == 0)
-                throw DownloadError("HTTP connection closed");
+                throw DownloadError("HTTP连接意外断开");
             pos += read;
         }
     }
@@ -441,7 +441,7 @@ void Download::download_data(
         }
 
         if (!pkgi_write(item_file, buffer, write))
-            throw formatEx<DownloadError>("failed to write to {}", item_path);
+            throw formatEx<DownloadError>("无法写入到 {}", item_path);
     }
 }
 
@@ -466,7 +466,7 @@ void Download::create_file()
     LOGF("creating {} file", item_name);
     item_file = pkgi_create(item_path.c_str());
     if (!item_file)
-        throw formatEx<DownloadError>("cannot create file {}", item_name);
+        throw formatEx<DownloadError>("无法创建 {} 文件", item_name);
 }
 
 void Download::open_file()
@@ -474,7 +474,7 @@ void Download::open_file()
     LOGF("opening {} file for resume", item_name);
     item_file = pkgi_openrw(item_path.c_str());
     if (!item_file)
-        throw formatEx<DownloadError>("cannot create file {}", item_name);
+        throw formatEx<DownloadError>("无法创建 {} 文件", item_name);
 }
 
 int Download::download_head(const uint8_t* rif)
@@ -501,14 +501,14 @@ int Download::download_head(const uint8_t* rif)
     if (get32be(head.data()) != 0x7f504b47 ||
         get32be(head.data() + PKG_HEADER_SIZE) != 0x7F657874)
     {
-        throw DownloadError("wrong pkg header");
+        throw DownloadError("pkg文件头(MAGIC)不匹配");
     }
 
     // contentid is at 0x50 for psm games
     if (rif && !(pkgi_memequ(rif + 0x10, head.data() + 0x30, 0x30) ||
                  pkgi_memequ(rif + 0x50, head.data() + 0x30, 0x30)))
     {
-        throw DownloadError("zRIF content id doesn't match pkg");
+        throw DownloadError("zRIF与PKG文件不匹配");
     }
 
     const auto meta_offset = get32be(head.data() + 8);
@@ -553,7 +553,7 @@ int Download::download_head(const uint8_t* rif)
         aes128_encrypt(&ctx, iv, key);
     }
     else
-        throw DownloadError("invalid key type " + std::to_string(key_type));
+        throw DownloadError("无效的密钥类型 " + std::to_string(key_type));
 
     aes128_ctr_init(&aes, key);
 
@@ -571,7 +571,7 @@ int Download::download_head(const uint8_t* rif)
     {
         if (offset + 16 >= enc_offset)
         {
-            throw DownloadError("pkg file is too small or corrupted");
+            throw DownloadError("PKG文件损坏");
         }
 
         uint32_t type = get32be(head.data() + offset + 0);
@@ -589,7 +589,7 @@ int Download::download_head(const uint8_t* rif)
                 content_type != CONTENT_TYPE_PSV_DLC)
             {
                 throw DownloadError(
-                        "unsupported package type: " +
+                        "不支持的PKG类型: " +
                         std::to_string(content_type));
             }
         }
@@ -654,17 +654,17 @@ void Download::download_file_content(uint64_t encrypted_size)
 void Download::download_file_content_to_iso(uint64_t item_size)
 {
     if (item_size < 0x28)
-        throw DownloadError("eboot.pbp file is too small");
+        throw DownloadError("eboot.pbp 文件错误");
 
     uint8_t eboot_header[0x28];
     download_data(eboot_header, sizeof(eboot_header), 1, 0);
 
     if (memcmp(eboot_header, "\x00PBP", 4) != 0)
-        throw DownloadError("wrong eboot.pbp header magic");
+        throw DownloadError("eboot.pbp 文件头(MAGIC)不匹配");
 
     uint32_t const psar_offset = get32le(eboot_header + 0x24);
     if (psar_offset + 256 > item_size)
-        throw DownloadError("eboot.pbp file is to short");
+        throw DownloadError("eboot.pbp 文件错误");
     if (psar_offset % 16 != 0)
         throw DownloadError("psar_offset is not aligned");
 
@@ -746,7 +746,7 @@ void Download::download_file_content_to_iso(uint64_t item_size)
         {
             if (!pkgi_write(item_file, data.data(), block_size))
                 throw DownloadError(
-                        fmt::format("failed to write to %s", item_path));
+                        fmt::format("无法写入到 %s", item_path));
         }
         else
         {
@@ -764,7 +764,7 @@ void Download::download_file_content_to_iso(uint64_t item_size)
             }
             if (!pkgi_write(item_file, uncompressed.data(), out_size))
                 throw DownloadError(
-                        fmt::format("failed to write to %s", item_path));
+                        fmt::format("无法写入到 %s", item_path));
         }
     }
 
@@ -809,7 +809,7 @@ void Download::download_file_content_to_pspkey(uint64_t item_size)
     aes128_psp_decrypt(&psp_key, psp_iv, 0, key_header + 0x90, 0x10);
 
     if (!pkgi_write(item_file, key_header + 0x90, 0x10))
-        throw DownloadError(fmt::format("failed to write to %s", item_path));
+        throw DownloadError(fmt::format("无法写入到o %s", item_path));
 
     skip_to_file_offset(item_size);
 }

@@ -28,7 +28,7 @@ void CompPackDatabase::reopen()
 {
     LOG("opening database %s", _dbPath.c_str());
     sqlite3* db;
-    SQLITE_CHECK(sqlite3_open(_dbPath.c_str(), &db), "can't open database");
+    SQLITE_CHECK(sqlite3_open(_dbPath.c_str(), &db), "无法打开数据表");
     _sqliteDb.reset(db);
 
     try
@@ -44,7 +44,7 @@ void CompPackDatabase::reopen()
                         -1,
                         &stmt,
                         nullptr),
-                "sanity select failed");
+                "数据表完整性检查失败");
         sqlite3_finalize(stmt);
     }
     catch (const std::exception& e)
@@ -62,7 +62,7 @@ void CompPackDatabase::reopen()
             app_version TEXT NOT NULL,
             path TEXT NOT NULL,
             PRIMARY KEY (titleid, app_version)
-        ))", "can't create comp pack table");
+        ))", "适配包列表创建失败");
 }
 
 namespace
@@ -197,7 +197,7 @@ void CompPackDatabase::update(Http* http, const std::string& update_url)
 
     if (length > (int64_t)db_data.size())
         throw std::runtime_error(
-                "comp pack list is too large... check for newer pkgj version");
+                "列表过长");
 
     for (;;)
     {
@@ -211,7 +211,7 @@ void CompPackDatabase::update(Http* http, const std::string& update_url)
 
     if (db_size == 0)
         throw std::runtime_error(
-                "list is empty... check for newer pkgi version");
+                "列表为空");
 
     LOG("parsing items");
 

@@ -420,13 +420,13 @@ void TitleDatabase::parse_tsv_file(std::string& db_data)
             auto err = sqlite3_step(stmt);
             if (err != SQLITE_DONE)
                 throw std::runtime_error(fmt::format(
-                        "can't execute SQL statement:\n{}",
+                        "无法执行SQL查询:\n{}",
                         sqlite3_errmsg(_sqliteDb.get())));
         }
         catch (const std::exception& e)
         {
             throw formatEx<std::runtime_error>(
-                    "failed to parse line\n{}\n{}", ptr, e.what());
+                    "分割行失败(请检查网络连接)\n{}\n{}", ptr, e.what());
         }
     }
 }
@@ -439,7 +439,7 @@ void TitleDatabase::update(Http* http, const char* update_url)
     db_size = 0;
 
     if (update_url[0] == 0)
-        throw std::runtime_error("no update url");
+        throw std::runtime_error("没有更新URL");
 
     LOG("loading update from %s", update_url);
 
@@ -449,7 +449,7 @@ void TitleDatabase::update(Http* http, const char* update_url)
 
     if (length > (int64_t)db_data.size() - 1)
         throw std::runtime_error(
-                "list is too large... check for newer pkgj version");
+                "列表过长");
 
     if (length != 0)
         db_total = (uint32_t)length;
@@ -466,7 +466,7 @@ void TitleDatabase::update(Http* http, const char* update_url)
 
     if (db_size == 0)
         throw std::runtime_error(
-                "list is empty... check for newer pkgi version");
+                "列表为空");
 
     LOG("parsing items");
 
@@ -601,7 +601,7 @@ void TitleDatabase::reload(
             break;
         if (err != SQLITE_ROW)
             throw std::runtime_error(fmt::format(
-                    "can't execute SQL statement:\n{}",
+                    "无法执行SQL查询:\n{}",
                     sqlite3_errmsg(_sqliteDb.get())));
 
         std::string content =
