@@ -4,7 +4,8 @@
 #include "extractzip.hpp"
 #include "filedownload.hpp"
 #include "filehttp.hpp"
-extern "C" {
+extern "C"
+{
 #include "zrif.h"
 }
 
@@ -16,7 +17,7 @@ extern "C" {
 
 static constexpr auto USAGE =
         "Usage: %s [extract <filename> <zrif> <sha256>] [refreshlist PSV "
-        "path] [refreshcomppack path] [filedownload path]\n";
+        "path] [refreshcomppack path] [filedownload path] [extractzip path]\n";
 
 int extract(int argc, char* argv[])
 {
@@ -32,7 +33,7 @@ int extract(int argc, char* argv[])
     uint8_t rif[PKGI_PSM_RIF_SIZE];
     char message[256];
     if (argv[3][0] && !pkgi_zrif_decode(argv[3], rif, message, sizeof(message)))
-        throw std::runtime_error(fmt::format("can't decode zrif: {}", message));
+        throw std::runtime_error(fmt::format("zrif解碼失敗: {}", message));
 
     Download d(std::make_unique<FileHttp>());
 
@@ -51,29 +52,8 @@ Mode arg_to_mode(std::string const& arg)
 {
     if (arg == "PSVGAMES")
         return ModeGames;
-    else if (arg == "PSVUPDATES")
-        return ModeUpdates;
     else
-        throw std::runtime_error("unsupported arg: " + arg);
-}
-
-std::string modeToDbName(Mode mode)
-{
-    switch (mode)
-    {
-    case ModeGames:
-        return "pkgj_games.db";
-    case ModeDlcs:
-        return "pkgj_dlcs.db";
-    case ModeUpdates:
-        return "pkgj_updates.db";
-    case ModePspGames:
-        return "pkgj_pspgames.db";
-    case ModePsxGames:
-        return "pkgj_psxgames.db";
-    }
-    throw std::runtime_error(
-            fmt::format("unknown mode: {}", static_cast<int>(mode)));
+        throw std::runtime_error("不支持arg: " + arg);
 }
 
 int refreshlist(int argc, char* argv[])
@@ -88,9 +68,9 @@ int refreshlist(int argc, char* argv[])
 
     const auto mode = arg_to_mode(argv[2]);
 
-    const auto db = std::make_unique<TitleDatabase>(mode, modeToDbName(mode));
-    db->update(http.get(), argv[3]);
-    db->reload(DbFilterAllRegions, SortBySize, SortDescending, "the");
+    const auto db = std::make_unique<TitleDatabase>("pkgj.db");
+    db->update(mode, http.get(), argv[3]);
+    db->reload(mode, DbFilterAllRegions, SortBySize, SortDescending, "the", {});
     for (unsigned int i = 0; i < db->count(); ++i)
         fmt::print("{}: {}\n", db->get(i)->name, db->get(i)->size);
     fmt::print("{}/{}\n", db->count(), db->total());

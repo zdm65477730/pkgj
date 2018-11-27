@@ -1,12 +1,14 @@
 #include "downloader.hpp"
 
-#include <boost/scope_exit.hpp>
-
 #include "download.hpp"
+#include "file.hpp"
 #include "filedownload.hpp"
+#include "install.hpp"
 #include "vitahttp.hpp"
 
 #include <fmt/format.h>
+
+#include <boost/scope_exit.hpp>
 
 std::string type_to_string(Type type)
 {
@@ -14,8 +16,6 @@ std::string type_to_string(Type type)
     {
     case Type::Game:
         return "game";
-    case Type::Update:
-        return "update";
     case Type::Dlc:
         return "DLC";
     case Type::PsmGame:
@@ -165,9 +165,6 @@ void Downloader::do_download_package(const DownloadItem& item)
     case Dlc:
         pkgi_install(item.content.c_str());
         break;
-    case Update:
-        pkgi_install_update(item.content.c_str());
-        break;
     case PspGame:
         if (item.save_as_iso)
             pkgi_install_pspgame_as_iso(
@@ -183,16 +180,21 @@ void Downloader::do_download_package(const DownloadItem& item)
         break;
     case CompPack:
         throw std::runtime_error(
-                "无法下载comppack");
+                "無法下載兼容包");
     }
-    pkgi_rm(fmt::format("{}pkgi/{}.resume", item.partition, item.content)
+    pkgi_rm(fmt::format("{}pkgj/{}.resume", item.partition, item.content)
                     .c_str());
-    pkgi_delete_dir(fmt::format("{}pkgi/{}", item.partition, item.content));
+    pkgi_delete_dir(fmt::format("{}pkgj/{}", item.partition, item.content));
     LOG("install of %s completed!", item.name.c_str());
 }
 
 void Downloader::do_download_comppack(const DownloadItem& item)
 {
+    BOOST_SCOPE_EXIT_ALL(&)
+    {
+        refresh("");
+    };
+
     ScopeProcessLock _;
     LOGF("downloading comppack {}", item.url);
     auto download =
@@ -208,8 +210,8 @@ void Downloader::do_download_comppack(const DownloadItem& item)
     download->download(
             item.partition.c_str(), item.content.c_str(), item.url.c_str());
     LOGF("download of comppack {} completed!", item.url);
-    pkgi_install_comppack(item.content.c_str());
-    pkgi_rm(fmt::format("{}pkgi/{}-comp.ppk", item.partition, item.content)
+    pkgi_install_comppack(item.content, item.is_patch, item.version);
+    pkgi_rm(fmt::format("{}pkgj/{}-comp.ppk", item.partition, item.content)
                     .c_str());
     LOG("install of %s completed!", item.name.c_str());
 }

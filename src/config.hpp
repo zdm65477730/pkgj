@@ -15,7 +15,6 @@ typedef struct Config
     bool psm_readme_disclaimer;
 
     std::string games_url;
-    std::string updates_url;
     std::string dlcs_url;
     std::string psm_games_url;
     std::string psx_games_url;
@@ -24,5 +23,5 @@ typedef struct Config
     std::string comppack_url;
 } Config;
 
-Config pkgi_load_config(int ischg);
+Config pkgi_load_config();
 void pkgi_save_config(const Config& config);

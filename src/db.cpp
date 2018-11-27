@@ -1,6 +1,7 @@
 #include "db.hpp"
 
-extern "C" {
+extern "C"
+{
 #include "sha256.h"
 #include "utils.h"
 }
@@ -25,12 +26,11 @@ std::string pkgi_mode_to_string(Mode mode)
 #define RET(mode, str) \
     case Mode##mode:   \
         return str
-        RET(Games, "PSV游戏");
-        RET(Updates, "PSV更新");
-        RET(Dlcs, "PSV DLC");
-        RET(PsmGames, "PSM games");
-        RET(PsxGames, "PSX 游戏");
-        RET(PspGames, "PSP 游戏");
+        RET(Games, "PSV游戲");
+        RET(Dlcs, "PSV追加下載内容");
+        RET(PsmGames, "PSM游戲");
+        RET(PsxGames, "PSX游戲");
+        RET(PspGames, "PSP游戲");
 #undef RET
     default:
         return "unknown mode";
@@ -72,8 +72,26 @@ static std::array<uint8_t, 32> pkgi_hexbytes(
     return result;
 }
 
-TitleDatabase::TitleDatabase(Mode mode, std::string const& dbPath)
-    : mode(mode), _dbPath(dbPath)
+static const char* pkgi_mode_to_table_name(Mode mode)
+{
+    switch (mode)
+    {
+    case ModeGames:
+        return "titles_psvgames";
+    case ModeDlcs:
+        return "titles_psvdlcs";
+    case ModePsmGames:
+        return "titles_psmgames";
+    case ModePspGames:
+        return "titles_pspgames";
+    case ModePsxGames:
+        return "titles_psxgames";
+    }
+    throw formatEx<std::runtime_error>(
+            "未知模式 {}", static_cast<int>(mode));
+}
+
+TitleDatabase::TitleDatabase(std::string const& dbPath) : _dbPath(dbPath)
 {
     reopen();
 }
@@ -82,51 +100,31 @@ void TitleDatabase::reopen()
 {
     LOG("opening database %s", _dbPath.c_str());
     sqlite3* db;
-    SQLITE_CHECK(sqlite3_open(_dbPath.c_str(), &db), "can't open database");
+    SQLITE_CHECK(sqlite3_open(_dbPath.c_str(), &db), "無法打開數據庫");
     _sqliteDb.reset(db);
 
-    try
-    {
-        sqlite3_stmt* stmt;
-        SQLITE_CHECK(
-                sqlite3_prepare_v2(
-                        _sqliteDb.get(),
-                        R"(
-                        SELECT id, content, name, name_org, zrif, url,
-                            digest, size, fw_version, last_modification, region,
-                            app_version
-                        FROM titles
-                        WHERE 0)",
-                        -1,
-                        &stmt,
-                        nullptr),
-                "sanity select failed");
-        sqlite3_finalize(stmt);
-    }
-    catch (const std::exception& e)
-    {
-        LOG("%s. Trying migration.", e.what());
+    for (int i = 0; i < ModeCount; ++i)
         SQLITE_EXEC(
                 _sqliteDb,
-                R"(DROP TABLE IF EXISTS titles)",
-                "drop table failed");
-    }
-
-    SQLITE_EXEC(_sqliteDb, R"(
-        CREATE TABLE IF NOT EXISTS titles (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            content TEXT NOT NULL,
-            name TEXT NOT NULL,
-            name_org TEXT,
-            zrif TEXT,
-            url TEXT NOT NULL,
-            digest BLOB,
-            size INT,
-            fw_version TEXT,
-            last_modification DATETIME,
-            region TEXT NOT NULL,
-            app_version TEXT
-        ))", "can't create table");
+                fmt::format(
+                        R"(
+                        CREATE TABLE IF NOT EXISTS {} (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            content TEXT NOT NULL,
+                            name TEXT NOT NULL,
+                            name_org TEXT,
+                            zrif TEXT,
+                            url TEXT NOT NULL,
+                            digest BLOB,
+                            size INT,
+                            fw_version TEXT,
+                            last_modification DATETIME,
+                            region TEXT NOT NULL,
+                            app_version TEXT
+                        ))",
+                        pkgi_mode_to_table_name(static_cast<Mode>(i)))
+                        .c_str(),
+                "無法創建表");
 }
 
 namespace
@@ -198,24 +196,7 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, 10);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
-        }
-    case ModeUpdates:
-        switch (column)
-        {
-            MAP_COL(Region, 1);
-            MAP_COL(Name, 2);
-            MAP_COL(AppVersion, 3);
-            MAP_COL(FwVersion, 4);
-            MAP_COL(Url, 5);
-            MAP_COL(LastModification, 7);
-            MAP_COL(Size, 8);
-            MAP_COL(Digest, 9);
-            MAP_COL(Content, -1);
-            MAP_COL(NameOrg, -1);
-            MAP_COL(Zrif, -1);
-        default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("無效列");
         }
     case ModeDlcs:
         switch (column)
@@ -232,7 +213,7 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, -1);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("無效列");
         }
     case ModePsmGames:
         switch (column)
@@ -249,7 +230,7 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, -1);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("無效列");
         }
     case ModePsxGames:
         switch (column)
@@ -266,7 +247,7 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, -1);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("無效列");
         }
     case ModePspGames:
         switch (column)
@@ -283,10 +264,10 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(Zrif, -1);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("invalid column");
+            throw std::runtime_error("無效列");
         }
     default:
-        throw std::runtime_error("invalid mode");
+        throw std::runtime_error("無效模式");
     }
 #undef MAP_COL
 }
@@ -301,7 +282,7 @@ const char* get_or_empty(
 }
 }
 
-void TitleDatabase::parse_tsv_file(std::string& db_data)
+void TitleDatabase::parse_tsv_file(Mode mode, std::string& db_data)
 {
     SQLITE_EXEC(_sqliteDb, "BEGIN", "can't begin transaction");
 
@@ -319,15 +300,22 @@ void TitleDatabase::parse_tsv_file(std::string& db_data)
         }
     };
 
-    SQLITE_EXEC(_sqliteDb, "DELETE FROM titles", "can't truncate table");
+    SQLITE_EXEC(
+            _sqliteDb,
+            fmt::format("DELETE FROM {}", pkgi_mode_to_table_name(mode))
+                    .c_str(),
+            "can't truncate table");
 
     sqlite3_stmt* stmt;
     SQLITE_CHECK(
             sqlite3_prepare_v2(
                     _sqliteDb.get(),
-                    R"(INSERT INTO titles
-                    (content, name, name_org, zrif, url, digest, size, fw_version, last_modification, region, app_version)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?))",
+                    fmt::format(
+                            R"(INSERT INTO {}
+                            (content, name, name_org, zrif, url, digest, size, fw_version, last_modification, region, app_version)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?))",
+                            pkgi_mode_to_table_name(mode))
+                            .c_str(),
                     -1,
                     &stmt,
                     nullptr),
@@ -373,17 +361,6 @@ void TitleDatabase::parse_tsv_file(std::string& db_data)
                 std::string(zrif) == "MISSING")
                 continue;
 
-            if (mode == ModeUpdates)
-            {
-                std::reverse_iterator<const char*> rbegin(
-                        url + strlen(url) - 1);
-                std::reverse_iterator<const char*> rend(url - 1);
-                auto const it = std::find_if(
-                        rbegin, rend, [](char c) { return c == '/'; });
-                if (it != rend)
-                    content = it.base();
-            }
-
             sqlite3_reset(stmt);
             sqlite3_bind_text(stmt, 1, content, strlen(content), nullptr);
             sqlite3_bind_text(stmt, 2, name, strlen(name), nullptr);
@@ -420,28 +397,28 @@ void TitleDatabase::parse_tsv_file(std::string& db_data)
             auto err = sqlite3_step(stmt);
             if (err != SQLITE_DONE)
                 throw std::runtime_error(fmt::format(
-                        "无法执行SQL查询:\n{}",
+                        "無法執行SQL語句:\n{}",
                         sqlite3_errmsg(_sqliteDb.get())));
         }
         catch (const std::exception& e)
         {
             throw formatEx<std::runtime_error>(
-                    "分割行失败(请检查网络连接)\n{}\n{}", ptr, e.what());
+                    "無法解析綫\n{}\n{}", ptr, e.what());
         }
     }
 }
 
-void TitleDatabase::update(Http* http, const char* update_url)
+void TitleDatabase::update(Mode mode, Http* http, const std::string& update_url)
 {
     std::string db_data;
     db_data.resize(MAX_DB_SIZE);
     db_total = 0;
     db_size = 0;
 
-    if (update_url[0] == 0)
-        throw std::runtime_error("没有更新URL");
+    if (update_url.empty())
+        throw std::runtime_error("無更新所需鏈接");
 
-    LOG("loading update from %s", update_url);
+    LOGF("loading update from {}", update_url);
 
     http->start(update_url, 0);
 
@@ -449,7 +426,7 @@ void TitleDatabase::update(Http* http, const char* update_url)
 
     if (length > (int64_t)db_data.size() - 1)
         throw std::runtime_error(
-                "列表过长");
+                "列表過大... 請更新PKGj版本");
 
     if (length != 0)
         db_total = (uint32_t)length;
@@ -466,12 +443,12 @@ void TitleDatabase::update(Http* http, const char* update_url)
 
     if (db_size == 0)
         throw std::runtime_error(
-                "列表为空");
+                "列表爲空... 請更新PKGj版本");
 
     LOG("parsing items");
 
     db_data.resize(db_size);
-    parse_tsv_file(db_data);
+    parse_tsv_file(mode, db_data);
 
     LOG("finished parsing");
 }
@@ -491,7 +468,7 @@ const char* region_to_quoted_string(GameRegion region)
     case RegionUSA:
         return "'US'";
     default:
-        throw std::runtime_error(fmt::format("unknown region {}", (int)region));
+        throw std::runtime_error(fmt::format("未知發行區域 {}", (int)region));
     }
 }
 
@@ -540,7 +517,7 @@ bool lower(const DbItem& a, const DbItem& b, DbSort sort, DbSortOrder order)
     else if (sort == SortByDate)
         cmp = a.date.compare(b.date);
     else
-        throw std::runtime_error(fmt::format("unknown sort order {}", sort));
+        throw std::runtime_error(fmt::format("未知排列順序 {}", sort));
 
     if (cmp == 0)
         cmp = a.titleid.compare(b.titleid);
@@ -553,10 +530,12 @@ bool lower(const DbItem& a, const DbItem& b, DbSort sort, DbSortOrder order)
 }
 
 void TitleDatabase::reload(
+        Mode mode,
         uint32_t region_filter,
         DbSort sort_by,
         DbSortOrder sort_order,
-        const std::string& search)
+        const std::string& search,
+        const std::set<std::string>& installed_games)
 {
     // we need to reopen the db before every query because for some reason,
     // after the app is suspended, all further query will return disk I/O error
@@ -564,10 +543,11 @@ void TitleDatabase::reload(
 
     LOG("reloading database");
 
-    std::string query =
+    std::string query = fmt::format(
             "SELECT id, content, name, name_org, zrif, url, digest, size, "
             "last_modification, app_version, fw_version "
-            "FROM titles WHERE 1 ";
+            "FROM {} WHERE 1 ",
+            pkgi_mode_to_table_name(mode));
 
     if ((region_filter & DbFilterAllRegions) != DbFilterAllRegions)
         query += " AND region IN (" +
@@ -601,11 +581,13 @@ void TitleDatabase::reload(
             break;
         if (err != SQLITE_ROW)
             throw std::runtime_error(fmt::format(
-                    "无法执行SQL查询:\n{}",
+                    "無法執行SQL語句:\n{}",
                     sqlite3_errmsg(_sqliteDb.get())));
 
         std::string content =
                 reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        const std::string titleid =
+                content.size() >= 7 + 9 ? content.substr(7, 9) : "";
         const std::string name =
                 reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
         const char* name_org =
@@ -637,21 +619,24 @@ void TitleDatabase::reload(
         if (!name.empty() && name.back() != ']' && fw_version > "3.60")
             full_name = fmt::format("{} [{}]", full_name, fw_version);
 
-        db.push_back(DbItem{
-                PresenceUnknown,
-                content.size() >= 7 + 9 ? content.substr(7, 9) : "",
-                content,
-                0,
-                full_name,
-                name_org ? name_org : "",
-                zrif ? zrif : "",
-                url,
-                static_cast<bool>(bdigest),
-                bdigest ? digest : std::array<uint8_t, 32>{},
-                size,
-                date,
-                app_version,
-        });
+        if (!(region_filter & DbFilterInstalled) ||
+            installed_games.find(titleid) != installed_games.end())
+            db.push_back(DbItem{
+                    PresenceUnknown,
+                    titleid,
+                    content,
+                    0,
+                    full_name,
+                    name_org ? name_org : "",
+                    zrif ? zrif : "",
+                    url,
+                    static_cast<bool>(bdigest),
+                    bdigest ? digest : std::array<uint8_t, 32>{},
+                    size,
+                    date,
+                    app_version,
+                    fw_version,
+            });
     }
 
     LOG("sorting results");
@@ -673,7 +658,9 @@ void TitleDatabase::reload(
 
     SQLITE_EXEC_RESULT(
             _sqliteDb,
-            R"(SELECT COUNT(*) FROM titles)",
+            fmt::format(
+                    "SELECT COUNT(*) FROM {}", pkgi_mode_to_table_name(mode))
+                    .c_str(),
             "failed to get title count",
             ([](void* data, int, char** row, char**) {
                 auto const title_count = static_cast<uint32_t*>(data);

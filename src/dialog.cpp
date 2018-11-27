@@ -1,40 +1,46 @@
-extern "C" {
-#include "dialog.h"
+#include "dialog.hpp"
 
+extern "C"
+{
 #include "style.h"
 #include "utils.h"
 }
 #include "pkgi.hpp"
 
-typedef enum {
+#include <imgui.h>
+
+namespace
+{
+typedef enum
+{
     DialogNone,
     DialogMessage,
     DialogError,
+    DialogQuestion,
 } DialogType;
 
-static DialogType dialog_type;
-static char dialog_title[256];
-static char dialog_text[256];
-static char dialog_extra[256];
-static int dialog_allow_close;
-static int dialog_cancelled;
+DialogType dialog_type;
+std::string dialog_title;
+std::string dialog_text;
+std::vector<Response> dialog_responses;
+int dialog_allow_close;
+int dialog_cancelled;
 
-static int32_t dialog_width;
-static int32_t dialog_height;
-static int32_t dialog_delta;
+int dialog_name = 0;
+}
 
-void pkgi_dialog_init(void)
+void pkgi_dialog_init()
 {
     dialog_type = DialogNone;
     dialog_allow_close = 1;
 }
 
-int pkgi_dialog_is_open(void)
+int pkgi_dialog_is_open()
 {
     return dialog_type != DialogNone;
 }
 
-int pkgi_dialog_is_cancelled(void)
+int pkgi_dialog_is_cancelled()
 {
     return dialog_cancelled;
 }
@@ -46,17 +52,18 @@ void pkgi_dialog_allow_close(int allow)
     pkgi_dialog_unlock();
 }
 
-void pkgi_dialog_message(const char* text)
+void pkgi_dialog_message(const char* text, int allow_close)
 {
     pkgi_dialog_lock();
 
-    pkgi_strncpy(dialog_text, sizeof(dialog_text), text);
-    dialog_title[0] = 0;
-    dialog_extra[0] = 0;
+    ++dialog_name;
 
+    dialog_text = text;
+    dialog_title = "";
+
+    dialog_allow_close = allow_close;
     dialog_cancelled = 0;
     dialog_type = DialogMessage;
-    dialog_delta = 1;
 
     pkgi_dialog_unlock();
 }
@@ -67,185 +74,110 @@ void pkgi_dialog_error(const char* text)
 
     pkgi_dialog_lock();
 
-    pkgi_strncpy(dialog_title, sizeof(dialog_title), "错误");
-    pkgi_strncpy(dialog_text, sizeof(dialog_text), text);
-    dialog_extra[0] = 0;
+    ++dialog_name;
 
+    dialog_title = "ERROR";
+    dialog_text = text;
+
+    dialog_allow_close = 1;
     dialog_cancelled = 0;
     dialog_type = DialogError;
-    dialog_delta = 1;
 
     pkgi_dialog_unlock();
 }
 
-void pkgi_dialog_close(void)
-{
-    dialog_delta = -1;
-}
-
-void pkgi_do_dialog(pkgi_input* input)
+void pkgi_dialog_question(
+        const std::string& text, const std::vector<Response>& responses)
 {
     pkgi_dialog_lock();
 
-    if (dialog_allow_close)
-    {
-        if ((dialog_type == DialogMessage || dialog_type == DialogError) &&
-            (input->pressed & pkgi_ok_button()))
-        {
-            dialog_delta = -1;
-        }
-    }
+    ++dialog_name;
 
-    if (dialog_delta != 0)
-    {
-        dialog_width +=
-                dialog_delta *
-                (int32_t)(input->delta * PKGI_ANIMATION_SPEED / 1000000);
-        dialog_height +=
-                dialog_delta *
-                (int32_t)(input->delta * PKGI_ANIMATION_SPEED / 1000000);
+    dialog_text = text;
+    dialog_title = "";
 
-        if (dialog_delta < 0 && (dialog_width <= 0 || dialog_height <= 0))
-        {
-            dialog_type = DialogNone;
-            dialog_text[0] = 0;
-            dialog_extra[0] = 0;
+    dialog_cancelled = 0;
+    dialog_type = DialogQuestion;
+    dialog_responses = responses;
 
-            dialog_width = 0;
-            dialog_height = 0;
-            dialog_delta = 0;
-            pkgi_dialog_unlock();
-            return;
-        }
-        else if (dialog_delta > 0)
-        {
-            if (dialog_width >= PKGI_DIALOG_WIDTH &&
-                dialog_height >= PKGI_DIALOG_HEIGHT)
-            {
-                dialog_delta = 0;
-            }
-            dialog_width = min32(dialog_width, PKGI_DIALOG_WIDTH);
-            dialog_height = min32(dialog_height, PKGI_DIALOG_HEIGHT);
-        }
-    }
+    pkgi_dialog_unlock();
+}
+
+void pkgi_dialog_close()
+{
+    pkgi_dialog_lock();
+    dialog_type = DialogNone;
+    dialog_responses = {};
+    pkgi_dialog_unlock();
+}
+
+void pkgi_do_dialog()
+{
+    pkgi_dialog_lock();
 
     DialogType local_type = dialog_type;
-    char local_title[256];
-    char local_text[256];
-    char local_extra[256];
+    std::string local_title = dialog_title;
+    std::string local_text = dialog_text;
+    const auto local_name = dialog_name;
     int local_allow_close = dialog_allow_close;
-    int32_t local_width = dialog_width;
-    int32_t local_height = dialog_height;
-
-    pkgi_strncpy(local_title, sizeof(local_title), dialog_title);
-    pkgi_strncpy(local_text, sizeof(local_text), dialog_text);
-    pkgi_strncpy(local_extra, sizeof(local_extra), dialog_extra);
+    const auto responses = dialog_responses;
+    std::function<void()> callback;
 
     pkgi_dialog_unlock();
 
-    if (local_width != 0 && local_height != 0)
-    {
-        pkgi_draw_rect(
-                (VITA_WIDTH - local_width) / 2,
-                (VITA_HEIGHT - local_height) / 2,
-                local_width,
-                local_height,
-                PKGI_COLOR_MENU_BACKGROUND);
-    }
-
-    if (local_width != PKGI_DIALOG_WIDTH || local_height != PKGI_DIALOG_HEIGHT)
-    {
-        return;
-    }
-
-    int font_height = pkgi_text_height("我");
-
-    int w = VITA_WIDTH - 2 * PKGI_DIALOG_HMARGIN;
-    int h = VITA_HEIGHT - 2 * PKGI_DIALOG_VMARGIN;
-
-    if (local_title[0])
-    {
-        uint32_t color;
-        if (local_type == DialogError)
-        {
-            color = PKGI_COLOR_TEXT_ERROR;
-        }
-        else
-        {
-            color = PKGI_COLOR_TEXT_DIALOG;
-        }
-
-        int width = pkgi_text_width(local_title);
-        if (width > w + 2 * PKGI_DIALOG_PADDING)
-        {
-            pkgi_clip_set(
-                    PKGI_DIALOG_HMARGIN + PKGI_DIALOG_PADDING,
-                    PKGI_DIALOG_VMARGIN + PKGI_DIALOG_PADDING,
-                    w - 2 * PKGI_DIALOG_PADDING,
-                    h - 2 * PKGI_DIALOG_PADDING);
-            pkgi_draw_text(
-                    (VITA_WIDTH - width) / 2,
-                    PKGI_DIALOG_VMARGIN + font_height,
-                    color,
-                    local_title);
-            pkgi_clip_remove();
-        }
-        else
-        {
-            pkgi_draw_text(
-                    (VITA_WIDTH - width) / 2,
-                    PKGI_DIALOG_VMARGIN + font_height,
-                    color,
-                    local_title);
-        }
-    }
-
-    uint32_t color;
-    if (local_type == DialogMessage)
-    {
-        color = PKGI_COLOR_TEXT_DIALOG;
-    }
-    else // local_type == DialogError
-    {
-        color = PKGI_COLOR_TEXT_ERROR;
-    }
-
-    int textw = pkgi_text_width(local_text);
-    if (textw > w + 2 * PKGI_DIALOG_PADDING)
-    {
-        pkgi_clip_set(
-                PKGI_DIALOG_HMARGIN + PKGI_DIALOG_PADDING,
-                PKGI_DIALOG_VMARGIN + PKGI_DIALOG_PADDING,
-                w - 2 * PKGI_DIALOG_PADDING,
-                h - 2 * PKGI_DIALOG_PADDING);
-        pkgi_draw_text(
-                PKGI_DIALOG_HMARGIN + PKGI_DIALOG_PADDING,
-                VITA_HEIGHT / 2 - font_height / 2,
-                color,
-                local_text);
-        pkgi_clip_remove();
-    }
+    ImGui::SetNextWindowPos(
+            ImVec2{VITA_WIDTH / 2, VITA_HEIGHT / 2}, 0, ImVec2{.5f, .5f});
+    ImGui::SetNextWindowSize(ImVec2{PKGI_DIALOG_WIDTH, -1});
+    ImGui::Begin(
+            std::to_string(local_name).c_str(),
+            nullptr,
+            ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                    ImGuiWindowFlags_NoScrollWithMouse |
+                    ImGuiWindowFlags_NoCollapse |
+                    ImGuiWindowFlags_NoSavedSettings |
+                    ImGuiWindowFlags_NoInputs);
+    ImGui::PushTextWrapPos(0.f);
+    if (local_type == DialogError)
+        ImGui::TextColored(
+                ImVec4{1.f, .2f, .2f, 1.f}, "%s", local_text.c_str());
     else
+        ImGui::TextUnformatted(local_text.c_str());
+    ImGui::PopTextWrapPos();
+    if (local_type == DialogQuestion)
     {
-        pkgi_draw_text(
-                (VITA_WIDTH - textw) / 2,
-                VITA_HEIGHT / 2 - font_height / 2,
-                color,
-                local_text);
+        ImGui::Separator();
+        for (auto const response : responses)
+        {
+            if (ImGui::Button(
+                        response.text.c_str(),
+                        ImVec2{ImGui::GetWindowContentRegionWidth(),
+                               ImGui::GetTextLineHeightWithSpacing()}))
+            {
+                pkgi_dialog_lock();
+                dialog_type = DialogNone;
+                dialog_responses = {};
+                pkgi_dialog_unlock();
+                callback = response.callback;
+            }
+        }
     }
+    else if (local_allow_close)
+    {
+        ImGui::Separator();
+        if (ImGui::Button(
+                    "好",
+                    ImVec2{ImGui::GetWindowContentRegionWidth(),
+                           ImGui::GetTextLineHeightWithSpacing()}))
+        {
+            pkgi_dialog_lock();
+            dialog_type = DialogNone;
+            pkgi_dialog_unlock();
+        }
+        ImGui::SetItemDefaultFocus();
+    }
+    ImGui::End();
 
-    if (local_allow_close)
-    {
-        char text[256];
-        pkgi_snprintf(
-                text,
-                sizeof(text),
-                "按下 %s 关闭",
-                pkgi_ok_button() == PKGI_BUTTON_X ? PKGI_UTF8_X : PKGI_UTF8_O);
-        pkgi_draw_text(
-                (VITA_WIDTH - pkgi_text_width(text)) / 2,
-                PKGI_DIALOG_VMARGIN + h - 2 * font_height,
-                PKGI_COLOR_TEXT_DIALOG,
-                text);
-    }
+    if (callback)
+        callback();
 }

@@ -1,9 +1,11 @@
 #include "filedownload.hpp"
 #include "download.hpp"
 
-extern "C" {
+extern "C"
+{
 #include "utils.h"
 }
+#include "file.hpp"
 #include "pkgi.hpp"
 
 #include <fmt/format.h>
@@ -32,7 +34,7 @@ void FileDownload::start_download()
 
     const auto http_length = _http->get_length();
     if (http_length < 0)
-        throw DownloadError("HTTP response has unknown length");
+        throw DownloadError("HTTP相應長度未知");
 
     download_size = http_length;
     LOGF("http response length = {}", download_size);
@@ -41,7 +43,7 @@ void FileDownload::start_download()
 void FileDownload::download_data(uint32_t size)
 {
     if (is_canceled())
-        throw std::runtime_error("下载被用户取消");
+        throw std::runtime_error("已取消下載");
 
     if (size == 0)
         return;
@@ -55,7 +57,7 @@ void FileDownload::download_data(uint32_t size)
         {
             const int read = _http->read(buffer.data() + pos, size - pos);
             if (read == 0)
-                throw DownloadError("HTTP链接关闭");
+                throw DownloadError("HTTP連接已斷開");
             pos += read;
         }
     }
@@ -72,7 +74,7 @@ void FileDownload::download_file()
     LOGF("creating {} file", root);
     item_file = pkgi_create(root.c_str());
     if (!item_file)
-        throw formatEx<DownloadError>("cannot create file {}", root);
+        throw formatEx<DownloadError>("無法創建文件 {}", root);
 
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -81,7 +83,7 @@ void FileDownload::download_file()
 
     start_download();
 
-    static constexpr auto SAVE_PERIOD = 512 * 1024;
+    static constexpr auto SAVE_PERIOD = 64 * 1024;
 
     while (download_offset < download_size)
     {
@@ -96,7 +98,7 @@ void FileDownload::download(
         const std::string& titleid,
         const std::string& url)
 {
-    root = fmt::format("{}pkgi/{}-comp.ppk", partition, titleid);
+    root = fmt::format("{}pkgj/{}-comp.ppk", partition, titleid);
     LOGF("temp installation folder: {}", root);
 
     download_size = 0;

@@ -1,6 +1,7 @@
 #include "menu.hpp"
 
-extern "C" {
+extern "C"
+{
 #include "style.h"
 }
 #include "config.hpp"
@@ -17,14 +18,14 @@ static MenuResult menu_result;
 static int32_t menu_width;
 static int32_t menu_delta;
 
-typedef enum {
+typedef enum
+{
     MenuSearch,
     MenuSearchClear,
     MenuText,
     MenuSort,
     MenuFilter,
     MenuRefresh,
-    MenuRefreshCompPack,
     MenuShow,
 } MenuType;
 
@@ -36,31 +37,30 @@ typedef struct
 } MenuEntry;
 
 static const MenuEntry menu_entries[] = {
-        {MenuSearch, "检索...", 0},
-        {MenuSearchClear, PKGI_UTF8_CLEAR " 清除", 0},
+        {MenuSearch, "搜索...", 0},
+        {MenuSearchClear, PKGI_UTF8_CLEAR " 取消搜索", 0},
 
-        {MenuText, "排列顺序:", 0},
-        {MenuSort, "游戏编号", SortByTitle},
-        {MenuSort, "发行区域", SortByRegion},
-        {MenuSort, "游戏名", SortByName},
-        {MenuSort, "容量", SortBySize},
-        {MenuSort, "NPS更新日期", SortByDate},
+        {MenuText, "排序方式:", 0},
+        {MenuSort, "游戲編號", SortByTitle},
+        {MenuSort, "發行區域", SortByRegion},
+        {MenuSort, "游戲名稱", SortByName},
+        {MenuSort, "游戲容量", SortBySize},
+        {MenuSort, "更新日期", SortByDate},
 
-        {MenuText, "发行区域筛选:", 0},
-        {MenuFilter, "亚洲", DbFilterRegionASA},
-        {MenuFilter, "欧洲", DbFilterRegionEUR},
+        {MenuText, "篩選選項:", 0},
+        {MenuFilter, "亞洲", DbFilterRegionASA},
+        {MenuFilter, "歐洲", DbFilterRegionEUR},
         {MenuFilter, "日本", DbFilterRegionJPN},
-        {MenuFilter, "美国", DbFilterRegionUSA},
+        {MenuFilter, "美國", DbFilterRegionUSA},
+        {MenuFilter, "已安裝的游戲", DbFilterInstalled},
 
         {MenuRefresh, "刷新", 0},
-        {MenuRefreshCompPack, "刷新适配包", 0},
 
-        {MenuShow, "PSV游戏(汉化)", 1},
-        {MenuShow, "PSV游戏更新", 2},
-        {MenuShow, "PSV游戏DLC", 4},
-        {MenuShow, "PSX游戏", 8},
-        {MenuShow, "PSP游戏", 16},
-        {MenuShow, "PSV游戏(NPS)", 32},
+        {MenuShow, "顯示PSV游戲", 1},
+        {MenuShow, "顯示PSV追加下載内容", 2},
+        {MenuShow, "顯示PSX游戲", 4},
+        {MenuShow, "顯示PSP游戲", 8},
+        {MenuShow, "顯示PSM游戲", 16},
 };
 
 int pkgi_menu_is_open(void)
@@ -177,22 +177,16 @@ int pkgi_do_menu(pkgi_input* input)
             menu_delta = -1;
             return 1;
         }
-        if (type == MenuSearchClear)
+        else if (type == MenuSearchClear)
         {
             menu_selected--;
             menu_result = MenuResultSearchClear;
             menu_delta = -1;
             return 1;
         }
-        if (type == MenuRefresh)
+        else if (type == MenuRefresh)
         {
             menu_result = MenuResultRefresh;
-            menu_delta = -1;
-            return 1;
-        }
-        if (type == MenuRefreshCompPack)
-        {
-            menu_result = MenuResultRefreshCompPack;
             menu_delta = -1;
             return 1;
         }
@@ -204,18 +198,15 @@ int pkgi_do_menu(pkgi_input* input)
                 menu_result = MenuResultShowGames;
                 break;
             case 2:
-                menu_result = MenuResultShowUpdates;
-                break;
-            case 4:
                 menu_result = MenuResultShowDlcs;
                 break;
-            case 8:
+            case 4:
                 menu_result = MenuResultShowPsxGames;
                 break;
-            case 16:
+            case 8:
                 menu_result = MenuResultShowPspGames;
                 break;
-            case 32:
+            case 16:
                 menu_result = MenuResultShowPsmGames;
                 break;
             }
@@ -283,8 +274,7 @@ int pkgi_do_menu(pkgi_input* input)
 
         char text[64];
         if (type == MenuSearch || type == MenuSearchClear || type == MenuText ||
-            type == MenuRefresh || type == MenuRefreshCompPack ||
-            type == MenuShow)
+            type == MenuRefresh || type == MenuShow)
         {
             pkgi_strncpy(text, sizeof(text), entry->text);
         }

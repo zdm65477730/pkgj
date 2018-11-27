@@ -1,7 +1,7 @@
 #include "pkgi.hpp"
 
-extern "C" {
-#include "dialog.h"
+extern "C"
+{
 #include "style.h"
 #include "utils.h"
 #include "zrif.h"
@@ -9,14 +9,23 @@ extern "C" {
 #include "comppackdb.hpp"
 #include "config.hpp"
 #include "db.hpp"
+#include "dialog.hpp"
 #include "download.hpp"
 #include "downloader.hpp"
+#include "gameview.hpp"
+#include "imgui.hpp"
+#include "install.hpp"
 #include "menu.hpp"
+#include "update.hpp"
 #include "vitahttp.hpp"
+#include <imgui_internal.h>
+
+#include <vita2d.h>
 
 #include <fmt/format.h>
 
 #include <memory>
+#include <set>
 
 #include <cstddef>
 #include <cstring>
@@ -24,78 +33,152 @@ extern "C" {
 #define PKGI_UPDATE_URL \
     "https://api.github.com/repos/blastrock/pkgj/releases/latest"
 
-typedef enum {
+namespace
+{
+typedef enum
+{
     StateError,
     StateRefreshing,
-    StateCPRefreshing,
     StateMain,
 } State;
 
-static State state = StateMain;
-static Mode mode = ModeGames;
+State state = StateMain;
+Mode mode = ModeGames;
 
-static uint32_t first_item;
-static uint32_t selected_item;
+uint32_t first_item;
+uint32_t selected_item;
 
-static int search_active;
+int search_active;
 
-static const char* current_url = nullptr;
+Config config;
+Config config_temp;
 
-static Config config;
-static Config config_temp;
+int font_height;
+int avail_height;
+int bottom_y;
 
-static int font_height;
-static int avail_height;
-static int bottom_y;
+char search_text[256];
+char error_state[256];
 
-static char search_text[256];
-static char error_state[256];
+// used for multiple things actually
+Mutex refresh_mutex("refresh_mutex");
+std::string current_action;
+std::unique_ptr<TitleDatabase> db;
+std::unique_ptr<CompPackDatabase> comppack_db_games;
+std::unique_ptr<CompPackDatabase> comppack_db_updates;
 
-static std::unique_ptr<TitleDatabase> db;
-static std::unique_ptr<CompPackDatabase> comppack_db;
+std::set<std::string> installed_games;
 
-static void pkgi_open_db();
+std::unique_ptr<GameView> gameview;
+bool need_refresh = true;
+std::string content_to_refresh;
 
-static const char* pkgi_get_ok_str(void)
+void pkgi_reload();
+
+const char* pkgi_get_ok_str(void)
 {
     return pkgi_ok_button() == PKGI_BUTTON_X ? PKGI_UTF8_X : PKGI_UTF8_O;
 }
 
-static const char* pkgi_get_cancel_str(void)
+const char* pkgi_get_cancel_str(void)
 {
     return pkgi_cancel_button() == PKGI_BUTTON_O ? PKGI_UTF8_O : PKGI_UTF8_X;
 }
 
-static void configure_db(
-        TitleDatabase* db, const char* search, const Config* config)
+void configure_db(TitleDatabase* db, const char* search, const Config* config)
 {
     try
     {
         db->reload(
-                config->filter,
+                mode,
+                mode == ModeGames || mode == ModeDlcs
+                        ? config->filter
+                        : config->filter & ~DbFilterInstalled,
                 config->sort,
                 config->order,
-                search ? search : "");
+                search ? search : "",
+                installed_games);
     }
     catch (const std::exception& e)
     {
         snprintf(
                 error_state,
                 sizeof(error_state),
-                "无法读取列表: %s",
+                "無法加載列表: %s",
                 e.what());
         pkgi_dialog_error(error_state);
     }
 }
 
-static void pkgi_refresh_thread(void)
+std::string const& pkgi_get_url_from_mode(Mode mode)
+{
+    switch (mode)
+    {
+    case ModeGames:
+        return config.games_url;
+    case ModeDlcs:
+        return config.dlcs_url;
+    case ModePsmGames:
+        return config.psm_games_url;
+    case ModePspGames:
+        return config.psp_games_url;
+    case ModePsxGames:
+        return config.psx_games_url;
+    }
+    throw std::runtime_error(
+            fmt::format("未知模式: {}", static_cast<int>(mode)));
+}
+
+void pkgi_refresh_thread(void)
 {
     LOG("starting update");
-    const char* url = current_url;
     try
     {
-        auto const http = std::make_unique<VitaHttp>();
-        db->update(http.get(), url);
+        ScopeProcessLock lock;
+        for (int i = 0; i < ModeCount; ++i)
+        {
+            const auto mode = static_cast<Mode>(i);
+            auto const url = pkgi_get_url_from_mode(mode);
+            if (url.empty())
+                continue;
+            {
+                std::lock_guard<Mutex> lock(refresh_mutex);
+                current_action = fmt::format(
+                        "正在刷新 {} [{}/{}]",
+                        pkgi_mode_to_string(mode),
+                        i + 1,
+                        ModeCount + 2);
+            }
+            auto const http = std::make_unique<VitaHttp>();
+            db->update(mode, http.get(), url);
+        }
+        if (!config.comppack_url.empty())
+        {
+            {
+                std::lock_guard<Mutex> lock(refresh_mutex);
+                current_action = fmt::format(
+                        "正在刷新游戲本體兼容包 [{}/{}]",
+                        ModeCount + 2 - 1,
+                        ModeCount + 2);
+            }
+            {
+                auto const http = std::make_unique<VitaHttp>();
+                comppack_db_games->update(
+                        http.get(), config.comppack_url + "entries.txt");
+            }
+            {
+                std::lock_guard<Mutex> lock(refresh_mutex);
+                current_action = fmt::format(
+                        "正在刷新游戲更新兼容包 [{}/{}]",
+                        ModeCount + 2,
+                        ModeCount + 2);
+            }
+            {
+                auto const http = std::make_unique<VitaHttp>();
+                comppack_db_updates->update(
+                        http.get(), config.comppack_url + "entries_patch.txt");
+            }
+        }
         first_item = 0;
         selected_item = 0;
         configure_db(db.get(), NULL, &config);
@@ -105,152 +188,71 @@ static void pkgi_refresh_thread(void)
         snprintf(
                 error_state,
                 sizeof(error_state),
-                "无法获取列表: %s",
+                "無法獲取列表: %s",
                 e.what());
         pkgi_dialog_error(error_state);
     }
     state = StateMain;
 }
 
-static void pkgi_refresh_comppack_thread()
-{
-    LOG("starting update comppack");
-    try
-    {
-        auto const http = std::make_unique<VitaHttp>();
-        if (mode == ModeUpdates)
-            comppack_db->update(
-                    http.get(), config.comppack_url + "entries_patch.txt");
-        else
-            comppack_db->update(
-                    http.get(), config.comppack_url + "entries.txt");
-    }
-    catch (const std::exception& e)
-    {
-        pkgi_dialog_error(
-                fmt::format("刷新comppack列表失败:\n{}", e.what())
-                        .c_str());
-    }
-    state = StateMain;
-}
-
-static const char* pkgi_get_mode_partition()
+const char* pkgi_get_mode_partition()
 {
     return mode == ModePspGames || mode == ModePsxGames
                    ? config.install_psp_psx_location.c_str()
                    : "ux0:";
 }
 
-static std::string modeToDbName(Mode mode)
+void pkgi_refresh_installed_games()
+{
+    auto games = pkgi_get_installed_games();
+
+    installed_games.clear();
+    installed_games.insert(
+            std::make_move_iterator(games.begin()),
+            std::make_move_iterator(games.end()));
+}
+
+bool pkgi_is_installed(const char* titleid)
+{
+    return installed_games.find(titleid) != installed_games.end();
+}
+
+void pkgi_install_package(Downloader& downloader, DbItem* item)
 {
     switch (mode)
     {
     case ModeGames:
-        return "pkgj_games.db";
-    case ModeDlcs:
-        return "pkgj_dlcs.db";
-    case ModeUpdates:
-        return "pkgj_updates.db";
     case ModePsmGames:
-        return "pkgj_psmgames.db";
-    case ModePspGames:
-        return "pkgj_pspgames.db";
     case ModePsxGames:
-        return "pkgj_psxgames.db";
-    }
-    throw std::runtime_error(
-            fmt::format("unknown mode: {}", static_cast<int>(mode)));
-}
-
-static void pkgi_start_download(Downloader& downloader)
-{
-    DbItem* item = db->get(selected_item);
-
-    LOG("decoding zRIF");
-
-    // Just use the maximum size to be safe
-    uint8_t rif[PKGI_PSM_RIF_SIZE];
-    char message[256];
-    if (item->zrif.empty() ||
-        pkgi_zrif_decode(item->zrif.c_str(), rif, message, sizeof(message)))
-    {
-        downloader.add(DownloadItem{
-                static_cast<Type>(mode),
-                item->name,
-                item->content,
-                item->url,
-                item->zrif.empty()
-                        ? std::vector<uint8_t>{}
-                        : std::vector<uint8_t>(rif, rif + PKGI_PSM_RIF_SIZE),
-                item->has_digest
-                        ? std::vector<uint8_t>(
-                                  item->digest.begin(), item->digest.end())
-                        : std::vector<uint8_t>{},
-                !config.install_psp_as_pbp,
-                pkgi_get_mode_partition()});
-    }
-    else
-    {
-        pkgi_dialog_error(message);
+    case ModePspGames:
+        if (item->presence == PresenceInstalled)
+        {
+            LOGF("[{}] {} - 已安裝", item->titleid, item->name);
+            pkgi_dialog_error("已安裝");
+            return;
+        }
+        break;
+    case ModeDlcs:
+        if (item->presence == PresenceInstalled)
+        {
+            LOGF("[{}] {} - 已安裝", item->content, item->name);
+            pkgi_dialog_error("已安裝");
+            return;
+        }
+        if (item->presence != PresenceGamePresent)
+        {
+            LOGF("[{}] {} - 未安裝游戲", item->titleid, item->name);
+            pkgi_dialog_error("未安裝相應的游戲");
+            return;
+        }
+        break;
     }
 
+    pkgi_start_download(downloader, *item);
     item->presence = PresenceUnknown;
-    state = StateMain;
 }
 
-static void pkgi_start_download_comppack(Downloader& downloader)
-{
-    DbItem* item = db->get(selected_item);
-
-    // HACK: comppack are identified by their titleid instead of content id
-    if (downloader.is_in_queue(item->titleid))
-    {
-        downloader.remove_from_queue(item->titleid);
-        return;
-    }
-
-    if ((mode == ModeGames && item->presence != PresenceInstalled) ||
-        (mode == ModeUpdates && item->presence != PresenceInstalled))
-    {
-        LOGF("{} is not installed", item->content);
-        return;
-    }
-
-    const auto entry = comppack_db->get(item->titleid);
-    if (!entry)
-    {
-        pkgi_dialog_error(
-                fmt::format("未找到 {}的适配包", item->titleid)
-                        .c_str());
-        return;
-    }
-
-    const auto app_version = fmt::format("{:0>5}", item->app_version);
-    if (!item->app_version.empty() && entry->app_version != app_version)
-    {
-        pkgi_dialog_error(fmt::format(
-                                  "未找到对应 {}版本的适配包"
-                                  "{}, 数据库版本 {}",
-                                  item->titleid,
-                                  app_version,
-                                  entry->app_version)
-                                  .c_str());
-        return;
-    }
-
-    downloader.add(DownloadItem{CompPack,
-                                item->name,
-                                item->titleid,
-                                config.comppack_url + entry->path,
-                                std::vector<uint8_t>{},
-                                std::vector<uint8_t>{},
-                                false,
-                                "ux0:"});
-
-    state = StateMain;
-}
-
-static void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
+void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
 {
     if (size <= 0)
     {
@@ -279,47 +281,21 @@ static void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
     }
 }
 
-static std::string const& pkgi_get_url_from_mode(Mode mode)
-{
-    switch (mode)
-    {
-    case ModeGames:
-        return config.games_url;
-    case ModeUpdates:
-        return config.updates_url;
-    case ModeDlcs:
-        return config.dlcs_url;
-    case ModePsmGames:
-        return config.psm_games_url;
-    case ModePspGames:
-        return config.psp_games_url;
-    case ModePsxGames:
-        return config.psx_games_url;
-    }
-    throw std::runtime_error(
-            fmt::format("unknown mode: {}", static_cast<int>(mode)));
-}
-
-static void pkgi_set_mode(Mode set_mode)
+void pkgi_set_mode(Mode set_mode)
 {
     mode = set_mode;
-    pkgi_open_db();
+    pkgi_reload();
+    first_item = 0;
+    selected_item = 0;
 }
 
-static void pkgi_refresh_list()
+void pkgi_refresh_list()
 {
     state = StateRefreshing;
-    current_url = pkgi_get_url_from_mode(mode).c_str();
     pkgi_start_thread("refresh_thread", &pkgi_refresh_thread);
 }
 
-static void pkgi_refresh_comppack()
-{
-    state = StateCPRefreshing;
-    pkgi_start_thread("refresh_thread", &pkgi_refresh_comppack_thread);
-}
-
-static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
+void pkgi_do_main(Downloader& downloader, pkgi_input* input)
 {
     int col_titleid = 0;
     int col_region = col_titleid + pkgi_text_width("PCSE00000") +
@@ -460,15 +436,6 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
                 else if (pkgi_is_installed(titleid))
                     item->presence = PresenceGamePresent;
                 break;
-            case ModeUpdates:
-                if (downloader.is_in_queue(item->content))
-                    item->presence = PresenceInstalling;
-                else if (pkgi_update_is_installed(
-                                 item->titleid, item->app_version))
-                    item->presence = PresenceInstalled;
-                else if (pkgi_is_installed(titleid))
-                    item->presence = PresenceGamePresent;
-                break;
             }
 
             if (item->presence == PresenceUnknown)
@@ -576,7 +543,7 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
 
     if (db_count == 0)
     {
-        const char* text = "无数据,请进行刷新";
+        const char* text = "無數據!請嘗試刷新";
 
         int w = pkgi_text_width(text);
         pkgi_draw_text(
@@ -616,117 +583,66 @@ static void pkgi_do_main(Downloader& downloader, pkgi_input* input)
             return;
         DbItem* item = db->get(selected_item);
 
-        if (downloader.is_in_queue(item->content))
+        if (mode == ModeGames)
+            gameview = std::make_unique<GameView>(
+                    &config,
+                    &downloader,
+                    item,
+                    comppack_db_games->get(item->titleid),
+                    comppack_db_updates->get(item->titleid));
+        else
         {
-            downloader.remove_from_queue(item->content);
-            item->presence = PresenceUnknown;
-            return;
+            if (downloader.is_in_queue(item->content))
+            {
+                downloader.remove_from_queue(item->content);
+                item->presence = PresenceUnknown;
+            }
+            else
+                pkgi_install_package(downloader, item);
         }
-
-        switch (mode)
-        {
-        case ModeGames:
-        case ModePsmGames:
-        case ModePsxGames:
-        case ModePspGames:
-            if (item->presence == PresenceInstalled)
-            {
-                LOGF("[{}] {} - already installed", item->titleid, item->name);
-                pkgi_dialog_error("该程序已经安装");
-                return;
-            }
-            break;
-        case ModeDlcs:
-        case ModeUpdates:
-            if (item->presence == PresenceInstalled)
-            {
-                LOGF("[{}] {} - already installed", item->content, item->name);
-                pkgi_dialog_error("该程序已经安装");
-                return;
-            }
-            if (item->presence != PresenceGamePresent)
-            {
-                LOGF("[{}] {} - game not installed", item->titleid, item->name);
-                pkgi_dialog_error("依赖的程序未安装(本体未安装)");
-                return;
-            }
-            break;
-        }
-        LOGF("[{}] {} - starting to install", item->content, item->name);
-        pkgi_start_download(downloader);
-    }
-    else if (input && (input->pressed & PKGI_BUTTON_LT))
-    {
-        if (mode != ModeGames && mode != ModeUpdates)
-            return;
-
-        input->pressed &= ~PKGI_BUTTON_LT;
-
-        if (selected_item >= db->count())
-            return;
-
-        pkgi_start_download_comppack(downloader);
     }
     else if (input && (input->pressed & PKGI_BUTTON_T))
     {
         input->pressed &= ~PKGI_BUTTON_T;
 
         config_temp = config;
-        int allow_refresh = !config.games_url.empty() << 0 |
-                            !config.updates_url.empty() << 1 |
-                            !config.dlcs_url.empty() << 2 |
-                            !config.psx_games_url.empty() << 3 |
-                            !config.psp_games_url.empty() << 4 |
-                            !config.psm_games_url.empty() << 5;
+        int allow_refresh =
+                !config.games_url.empty() << 0 | !config.dlcs_url.empty() << 1 |
+                !config.psx_games_url.empty() << 2 |
+                !config.psp_games_url.empty() << 3 |
+                (!config.psm_games_url.empty() && config.psm_readme_disclaimer)
+                        << 4;
         pkgi_menu_start(search_active, &config, allow_refresh);
     }
 }
 
-static void pkgi_do_refresh(void)
+void pkgi_do_refresh(void)
 {
-    char text[256];
+    std::string text;
 
     uint32_t updated;
     uint32_t total;
     db->get_update_status(&updated, &total);
 
     if (total == 0)
-    {
-        pkgi_snprintf(
-                text,
-                sizeof(text),
-                "正在刷新... %.2f KB",
-                (uint32_t)updated / 1024.f);
-    }
+        text = fmt::format("{}...", current_action);
     else
-    {
-        pkgi_snprintf(
-                text,
-                sizeof(text),
-                "正在刷新... %u%%",
-                updated * 100U / total);
-    }
+        text = fmt::format("{}... {}%", current_action, updated * 100 / total);
 
-    int w = pkgi_text_width(text);
+    int w = pkgi_text_width(text.c_str());
     pkgi_draw_text(
-            (VITA_WIDTH - w) / 2, VITA_HEIGHT / 2, PKGI_COLOR_TEXT, text);
+            (VITA_WIDTH - w) / 2,
+            VITA_HEIGHT / 2,
+            PKGI_COLOR_TEXT,
+            text.c_str());
 }
 
-static void pkgi_do_refresh_comppack()
-{
-    const auto text = "正在下载comppack数据库...";
-
-    int w = pkgi_text_width(text);
-    pkgi_draw_text(
-            (VITA_WIDTH - w) / 2, VITA_HEIGHT / 2, PKGI_COLOR_TEXT, text);
-}
-
-static void pkgi_do_head(void)
+void pkgi_do_head(void)
 {
     const char* version = PKGI_VERSION;
 
     char title[256];
-    pkgi_snprintf(title, sizeof(title), "PKGj v%s(免费提供)", version);
+    pkgi_snprintf(title, sizeof(title), "PKGj v%s 繁體中文版", version);
     pkgi_draw_text(0, 0, PKGI_COLOR_TEXT_HEAD, title);
 
     pkgi_draw_rect(
@@ -743,7 +659,7 @@ static void pkgi_do_head(void)
         pkgi_snprintf(
                 battery,
                 sizeof(battery),
-                "电池电量: %u%%",
+                "電池電量: %u%%",
                 pkgi_bettery_get_level());
 
         uint32_t color;
@@ -797,11 +713,11 @@ static void pkgi_do_head(void)
     pkgi_clip_remove();
 }
 
-static uint64_t last_progress_time;
-static uint64_t last_progress_offset;
-static uint64_t last_progress_speed;
+uint64_t last_progress_time;
+uint64_t last_progress_offset;
+uint64_t last_progress_speed;
 
-static uint64_t get_speed(const uint64_t download_offset)
+uint64_t get_speed(const uint64_t download_offset)
 {
     const uint64_t now = pkgi_time_msec();
     const uint64_t progress_time = now - last_progress_time;
@@ -816,7 +732,7 @@ static uint64_t get_speed(const uint64_t download_offset)
     return last_progress_speed;
 }
 
-static void pkgi_do_tail(Downloader& downloader)
+void pkgi_do_tail(Downloader& downloader)
 {
     char text[256];
 
@@ -855,14 +771,14 @@ static void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(
                 text,
                 sizeof(text),
-                "正在下载 %s: %s (%s, %d%%)",
+                "正在下載 %s: %s (%s, %d%%)",
                 type_to_string(current_download->type).c_str(),
                 current_download->name.c_str(),
                 sspeed.c_str(),
                 static_cast<int>(download_offset * 100 / download_size));
     }
     else
-        pkgi_snprintf(text, sizeof(text), "空闲");
+        pkgi_snprintf(text, sizeof(text), "暫無下載");
 
     pkgi_draw_text(0, bottom_y, PKGI_COLOR_TEXT_TAIL, text);
 
@@ -873,11 +789,11 @@ static void pkgi_do_tail(Downloader& downloader)
 
     if (count == total)
     {
-        pkgi_snprintf(text, sizeof(text), "游戏计数: %u", count);
+        pkgi_snprintf(text, sizeof(text), "計數: %u", count);
     }
     else
     {
-        pkgi_snprintf(text, sizeof(text), "游戏计数: %u (%u)", count, total);
+        pkgi_snprintf(text, sizeof(text), "計數: %u (%u)", count, total);
     }
     pkgi_draw_text(0, second_line, PKGI_COLOR_TEXT_TAIL, text);
 
@@ -897,7 +813,7 @@ static void pkgi_do_tail(Downloader& downloader)
     }
 
     char free[64];
-    pkgi_snprintf(free, sizeof(free), "剩余空间: %s", size);
+    pkgi_snprintf(free, sizeof(free), "可用空間: %s", size);
 
     int rightw = pkgi_text_width(free);
     pkgi_draw_text(
@@ -913,25 +829,23 @@ static void pkgi_do_tail(Downloader& downloader)
     if (pkgi_menu_is_open())
     {
         bottom_text = fmt::format(
-                "{} 选择  " PKGI_UTF8_T " 关闭  {} 取消",
+                "{} 選擇  " PKGI_UTF8_T " 關閉  {} 取消",
                 pkgi_get_ok_str(),
                 pkgi_get_cancel_str());
     }
     else
     {
-        DbItem* item = db->get(selected_item);
-        if ((mode == ModeGames || mode == ModeUpdates) && item &&
-            item->presence == PresenceInstalled)
-            bottom_text = fmt::format(
-                    "L {} ",
-                    downloader.is_in_queue(item->titleid)
-                            ? "取消"
-                            : "安装适配包");
-        if (item && item->presence == PresenceInstalling)
-            bottom_text += fmt::format("{} 取消 ", pkgi_get_ok_str());
-        else if (item && item->presence != PresenceInstalled)
-            bottom_text += fmt::format("{} 安装 ", pkgi_get_ok_str());
-        bottom_text += PKGI_UTF8_T " 菜单";
+        if (mode == ModeGames)
+            bottom_text += fmt::format("{} 詳細 ", pkgi_get_ok_str());
+        else
+        {
+            DbItem* item = db->get(selected_item);
+            if (item && item->presence == PresenceInstalling)
+                bottom_text += fmt::format("{} 取消 ", pkgi_get_ok_str());
+            else if (item && item->presence != PresenceInstalled)
+                bottom_text += fmt::format("{} 安裝 ", pkgi_get_ok_str());
+        }
+        bottom_text += PKGI_UTF8_T " 菜單";
     }
 
     pkgi_clip_set(
@@ -947,7 +861,7 @@ static void pkgi_do_tail(Downloader& downloader)
     pkgi_clip_remove();
 }
 
-static void pkgi_do_error(void)
+void pkgi_do_error(void)
 {
     pkgi_draw_text(
             (VITA_WIDTH - pkgi_text_width(error_state)) / 2,
@@ -956,7 +870,7 @@ static void pkgi_do_error(void)
             error_state);
 }
 
-static void reposition(void)
+void reposition(void)
 {
     uint32_t count = db->count();
     if (first_item + selected_item < count)
@@ -980,7 +894,7 @@ static void reposition(void)
     }
 }
 
-static void pkgi_reload()
+void pkgi_reload()
 {
     try
     {
@@ -988,45 +902,70 @@ static void pkgi_reload()
     }
     catch (const std::exception& e)
     {
-        LOGF("error during reload: {}", e.what());
+        LOGF("重新加載過程中發生錯誤: {}", e.what());
         pkgi_dialog_error(
                 fmt::format(
-                        "读取 {}数据表错误, 尝试进行刷新", e.what())
+                        "重新加載數據庫失敗: {}，請嘗試刷新?", e.what())
                         .c_str());
     }
 }
 
-static void pkgi_open_db()
+void pkgi_open_db()
 {
     try
     {
         first_item = 0;
         selected_item = 0;
-        // can't allocate two databases at the same time, a database class is
-        // 16MB at the moment, doesn't seem huge to me, but let's work around
-        // that
-        db = nullptr;
         db = std::make_unique<TitleDatabase>(
-                mode,
-                std::string(pkgi_get_config_folder()) + '/' +
-                        modeToDbName(mode));
+                std::string(pkgi_get_config_folder()) + "/pkgj.db");
 
-        if (mode == ModeUpdates)
-            comppack_db = std::make_unique<CompPackDatabase>(
-                    std::string(pkgi_get_config_folder()) +
-                    "/comppack_updates.db");
-        else
-            comppack_db = std::make_unique<CompPackDatabase>(
-                    std::string(pkgi_get_config_folder()) + "/comppack.db");
+        comppack_db_games = std::make_unique<CompPackDatabase>(
+                std::string(pkgi_get_config_folder()) + "/comppack.db");
+        comppack_db_updates = std::make_unique<CompPackDatabase>(
+                std::string(pkgi_get_config_folder()) + "/comppack_updates.db");
     }
     catch (const std::exception& e)
     {
-        LOGF("error during database open: {}", e.what());
+        LOGF("數據庫打開過程中發生錯誤: {}", e.what());
         throw formatEx<std::runtime_error>(
-                "数据表初始化错误: %s\n 尝试删除数据表");
+                "數據庫初始化失敗: %s\n是否嘗試刪除數據緩存?");
     }
 
     pkgi_reload();
+}
+}
+
+void pkgi_start_download(Downloader& downloader, const DbItem& item)
+{
+    LOGF("[{}] {} - 開始安裝", item.content, item.name);
+
+    // Just use the maximum size to be safe
+    uint8_t rif[PKGI_PSM_RIF_SIZE];
+    char message[256];
+    if (item.zrif.empty() ||
+        pkgi_zrif_decode(item.zrif.c_str(), rif, message, sizeof(message)))
+    {
+        downloader.add(DownloadItem{
+                static_cast<Type>(mode),
+                item.name,
+                item.content,
+                item.url,
+                item.zrif.empty()
+                        ? std::vector<uint8_t>{}
+                        : std::vector<uint8_t>(rif, rif + PKGI_PSM_RIF_SIZE),
+                item.has_digest
+                        ? std::vector<uint8_t>(
+                                  item.digest.begin(), item.digest.end())
+                        : std::vector<uint8_t>{},
+                !config.install_psp_as_pbp,
+                pkgi_get_mode_partition(),
+                false,
+                ""});
+    }
+    else
+    {
+        pkgi_dialog_error(message);
+    }
 }
 
 int main()
@@ -1037,32 +976,27 @@ int main()
     {
         if (!pkgi_is_unsafe_mode())
             throw std::runtime_error(
-                    "PKGJ需要开启Henkaku不安全模式");
+                    "PKGj需要在Henkaku中啓用不安全自製軟件"
+                    "設置!");
 
         Downloader downloader;
 
         downloader.refresh = [](const std::string& content) {
-            // FIXME this runs on the wrong thread
-            const auto item = db->get_by_content(content.c_str());
-            if (!item)
-            {
-                LOGF("couldn't find {}", content);
-                return;
-            }
-            item->presence = PresenceUnknown;
+            std::lock_guard<Mutex> lock(refresh_mutex);
+            content_to_refresh = content;
+            need_refresh = true;
         };
         downloader.error = [](const std::string& error) {
             // FIXME this runs on the wrong thread
-            pkgi_dialog_error(("下载失败: " + error).c_str());
+            pkgi_dialog_error(("下載失敗: " + error).c_str());
         };
 
         LOG("started");
 
-        config = pkgi_load_config(1);
-        current_url = config.games_url.c_str();
+        config = pkgi_load_config();
         pkgi_dialog_init();
 
-        font_height = pkgi_text_height("我");
+        font_height = pkgi_text_height("M");
         avail_height = VITA_HEIGHT - 3 * (font_height + PKGI_MAIN_HLINE_EXTRA);
         bottom_y = VITA_HEIGHT - 2 * font_height - PKGI_MAIN_ROW_PADDING;
 
@@ -1070,9 +1004,95 @@ int main()
 
         pkgi_texture background = pkgi_load_png(background);
 
+        if (!config.no_version_check)
+            start_update_thread();
+
+        const auto imgui_context = ImGui::CreateContext();
+        // Force enabling of navigation
+        imgui_context->NavDisableHighlight = false;
+        ImGuiIO& io = ImGui::GetIO();
+
+        // Build and load the texture atlas into a texture
+        uint32_t* pixels = NULL;
+        int width, height;
+        /*if (!io.Fonts->AddFontFromFileTTF(
+                    "sa0:/data/font/pvf/ltn0.pvf",
+                    20.0f,
+                    0,
+                    io.Fonts->GetGlyphRangesDefault()))
+            throw std::runtime_error("無法加載ltn0.pvf");
+        if (!io.Fonts->AddFontFromFileTTF(
+                    "sa0:/data/font/pvf/jpn0.pvf",
+                    20.0f,
+                    0,
+                    io.Fonts->GetGlyphRangesJapanese()))
+            throw std::runtime_error("無法加載jpn0.pvf");*/
+        if (!io.Fonts->AddFontFromFileTTF(
+                    "sa0:/data/font/pvf/cn0.pvf",
+                    20.0f,
+                    0,
+                    io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
+            throw std::runtime_error("無法加載cn0.pvf");
+        io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
+        vita2d_texture* font_texture =
+                vita2d_create_empty_texture(width, height);
+        const auto stride = vita2d_texture_get_stride(font_texture) / 4;
+        auto texture_data = (uint32_t*)vita2d_texture_get_datap(font_texture);
+
+        for (auto y = 0; y < height; ++y)
+            for (auto x = 0; x < width; ++x)
+                texture_data[y * stride + x] = pixels[y * width + x];
+
+        io.Fonts->TexID = font_texture;
+
+        init_imgui();
+
         pkgi_input input;
         while (pkgi_update(&input))
         {
+            ImGuiIO& io = ImGui::GetIO();
+            io.DeltaTime = 1.0f / 60.0f;
+            io.DisplaySize.x = VITA_WIDTH;
+            io.DisplaySize.y = VITA_HEIGHT;
+
+            if (gameview || pkgi_dialog_is_open())
+            {
+                if (input.active & PKGI_BUTTON_UP)
+                    io.NavInputs[ImGuiNavInput_DpadUp] = 1.0f;
+                if (input.active & PKGI_BUTTON_DOWN)
+                    io.NavInputs[ImGuiNavInput_DpadDown] = 1.0f;
+                if (input.active & PKGI_BUTTON_LEFT)
+                    io.NavInputs[ImGuiNavInput_DpadLeft] = 1.0f;
+                if (input.active & PKGI_BUTTON_RIGHT)
+                    io.NavInputs[ImGuiNavInput_DpadRight] = 1.0f;
+                if (input.active & pkgi_ok_button())
+                    io.NavInputs[ImGuiNavInput_Activate] = 1.0f;
+                input.active = 0;
+                input.pressed = 0;
+            }
+
+            if (need_refresh)
+            {
+                std::lock_guard<Mutex> lock(refresh_mutex);
+                pkgi_refresh_installed_games();
+                if (!content_to_refresh.empty())
+                {
+                    const auto item =
+                            db->get_by_content(content_to_refresh.c_str());
+                    if (item)
+                        item->presence = PresenceUnknown;
+                    else
+                        LOGF("無法找到 {} 用於刷新",
+                             content_to_refresh);
+                    content_to_refresh.clear();
+                }
+                if (gameview)
+                    gameview->refresh();
+                need_refresh = false;
+            }
+
+            ImGui::NewFrame();
+
             pkgi_draw_texture(background, 0, 0);
 
             pkgi_do_head();
@@ -1086,10 +1106,6 @@ int main()
                 pkgi_do_refresh();
                 break;
 
-            case StateCPRefreshing:
-                pkgi_do_refresh_comppack();
-                break;
-
             case StateMain:
                 pkgi_do_main(
                         downloader,
@@ -1100,9 +1116,16 @@ int main()
 
             pkgi_do_tail(downloader);
 
+            if (gameview)
+            {
+                gameview->render();
+                if (gameview->is_closed())
+                    gameview = nullptr;
+            }
+
             if (pkgi_dialog_is_open())
             {
-                pkgi_do_dialog(&input);
+                pkgi_do_dialog();
             }
 
             if (pkgi_dialog_input_update())
@@ -1137,7 +1160,7 @@ int main()
                     switch (mres)
                     {
                     case MenuResultSearch:
-                        pkgi_dialog_input_text("Search", search_text);
+                        pkgi_dialog_input_text("搜索", search_text);
                         break;
                     case MenuResultSearchClear:
                         search_active = 0;
@@ -1163,22 +1186,14 @@ int main()
                     case MenuResultRefresh:
                         pkgi_refresh_list();
                         break;
-                    case MenuResultRefreshCompPack:
-                        pkgi_refresh_comppack();
-                        break;
                     case MenuResultShowGames:
-                        config = pkgi_load_config(1);
                         pkgi_set_mode(ModeGames);
-                        break;
-                    case MenuResultShowUpdates:
-                        pkgi_set_mode(ModeUpdates);
                         break;
                     case MenuResultShowDlcs:
                         pkgi_set_mode(ModeDlcs);
                         break;
                     case MenuResultShowPsmGames:
-                        config = pkgi_load_config(2);
-                        pkgi_set_mode(ModeGames);
+                        pkgi_set_mode(ModePsmGames);
                         break;
                     case MenuResultShowPsxGames:
                         pkgi_set_mode(ModePsxGames);
@@ -1190,15 +1205,20 @@ int main()
                 }
             }
 
+            ImGui::EndFrame();
+            ImGui::Render();
+
+            pkgi_imgui_render(ImGui::GetDrawData());
+
             pkgi_swap();
         }
     }
     catch (const std::exception& e)
     {
-        LOGF("Error in main: {}", e.what());
+        LOGF("主要錯誤: {}", e.what());
         state = StateError;
         pkgi_snprintf(
-                error_state, sizeof(error_state), "严重错误: %s", e.what());
+                error_state, sizeof(error_state), "致命錯誤: %s", e.what());
 
         pkgi_input input;
         while (pkgi_update(&input))

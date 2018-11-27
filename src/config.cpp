@@ -1,5 +1,6 @@
 #include "config.hpp"
 
+#include "file.hpp"
 #include "pkgi.hpp"
 
 static char* skipnonws(char* text, char* end)
@@ -111,8 +112,7 @@ static DbFilter parse_filter(char* value, uint32_t filter)
     return static_cast<DbFilter>(result);
 }
 
-
-Config pkgi_load_config(int ischg)
+Config pkgi_load_config()
 {
     try
     {
@@ -161,11 +161,9 @@ Config pkgi_load_config(int ischg)
 
             text = skipws(text, end);
 
-            /*if (pkgi_stricmp(key, "url") == 0 ||
+            if (pkgi_stricmp(key, "url") == 0 ||
                 pkgi_stricmp(key, "url_games") == 0)
                 config.games_url = value;
-            else if (pkgi_stricmp(key, "url_updates") == 0)
-                config.updates_url = value;
             else if (pkgi_stricmp(key, "url_dlcs") == 0)
                 config.dlcs_url = value;
             else if (pkgi_stricmp(key, "url_psm_games") == 0)
@@ -176,9 +174,7 @@ Config pkgi_load_config(int ischg)
                 config.psp_games_url = value;
             else if (pkgi_stricmp(key, "url_comppack") == 0)
                 config.comppack_url = value;
-
-            else */
-            if (pkgi_stricmp(key, "sort") == 0)
+            else if (pkgi_stricmp(key, "sort") == 0)
                 config.sort = parse_sort(value, SortByName);
             else if (pkgi_stricmp(key, "order") == 0)
                 config.order = parse_order(value, SortAscending);
@@ -190,38 +186,24 @@ Config pkgi_load_config(int ischg)
                 config.install_psp_as_pbp = 1;
             else if (pkgi_stricmp(key, "install_psp_psx_location") == 0)
                 config.install_psp_psx_location = value;
-            else if (pkgi_stricmp(key, "psm_disclaimer_yes_i_read_the_readme") == 0)
-                config.psm_readme_disclaimer = (pkgi_stricmp(value, "NoPsmDrm") == 0);
+            else if (
+                    pkgi_stricmp(key, "psm_disclaimer_yes_i_read_the_readme") ==
+                    0)
+                config.psm_readme_disclaimer =
+                        (pkgi_stricmp(value, "NoPsmDrm") == 0);
         }
-        if (ischg == 1)
-        {
-            config.games_url = "http://47.100.37.250/tsv_files/PSV_GAMES.tsv";
-            config.updates_url = "http://47.100.37.250/tsv_files/PSV_UPDATES.tsv";
-            config.dlcs_url = "http://47.100.37.250/tsv_files/PSV_DLCS.tsv";
-            config.psp_games_url = "http://47.100.37.250/tsv_files/PSP_GAMES.tsv";
-            config.psx_games_url = "http://47.100.37.250/tsv_files/PSX_GAMES.tsv";
-            config.comppack_url = "https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/";
-            config.psm_games_url = "http://nopaystation.com/tsv/PSM_GAMES.tsv";
-
-        }
-        else if (ischg == 2)
-        {
-
-            config.games_url = "http://nopaystation.com/tsv/PSV_GAMES.tsv";
-            config.updates_url = "http://nopaystation.com/tsv/PSV_UPDATES.tsv";
-            config.dlcs_url = "http://nopaystation.com/tsv/PSV_DLCS.tsv";
-            config.psp_games_url = "http://nopaystation.com/tsv/PSP_GAMES.tsv";
-            config.psx_games_url = "http://nopaystation.com/tsv/PSX_GAMES.tsv";
-            config.comppack_url = "https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/";
-            config.psm_games_url = "http://nopaystation.com/tsv/PSM_GAMES.tsv";
-        
-        }
+        if (config.games_url.empty()) config.games_url="http://47.100.38.250/tsv_files/PSV_GAMES_SC.tsv";
+        if (config.dlcs_url.empty()) config.dlcs_url="http://47.100.38.250/tsv_files/PSV_DLCS.tsv";
+        if (config.psm_games_url.empty()) config.psm_games_url="http://47.100.38.250/tsv_files/PSM_GAMES.tsv";
+        if (config.psx_games_url.empty()) config.psx_games_url="http://47.100.38.250/tsv_files/PSX_GAMES.tsv";
+        if (config.psp_games_url.empty()) config.psp_games_url="http://47.100.38.250/tsv_files/PSP_GAMES.tsv";
+        if (config.comppack_url.empty()) config.comppack_url="https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/";
         return config;
     }
     catch (const std::exception& e)
     {
         throw formatEx<std::runtime_error>(
-                "无法读取配置文件");
+                "加載配置文件錯誤:\n{}", e.what());
     }
 }
 
@@ -259,19 +241,12 @@ void pkgi_save_config(const Config& config)
 {
     char data[4096];
     int len = 0;
-    /*
     if (!config.games_url.empty())
         len += pkgi_snprintf(
                 data + len,
                 sizeof(data) - len,
                 "url_games %s\n",
                 config.games_url.c_str());
-    if (!config.updates_url.empty())
-        len += pkgi_snprintf(
-                data + len,
-                sizeof(data) - len,
-                "url_updates %s\n",
-                config.updates_url.c_str());
     if (!config.dlcs_url.empty())
         len += pkgi_snprintf(
                 data + len,
@@ -302,7 +277,6 @@ void pkgi_save_config(const Config& config)
                 sizeof(data) - len,
                 "url_comppack %s\n",
                 config.comppack_url.c_str());
-    */
     if (!config.install_psp_psx_location.empty())
         len += pkgi_snprintf(
                 data + len,
@@ -311,9 +285,9 @@ void pkgi_save_config(const Config& config)
                 config.install_psp_psx_location.c_str());
     if (config.psm_readme_disclaimer)
         len += pkgi_snprintf(
-            data + len,
-            sizeof(data) - len,
-            "psm_disclaimer_yes_i_read_the_readme NoPsmDrm\n");
+                data + len,
+                sizeof(data) - len,
+                "psm_disclaimer_yes_i_read_the_readme NoPsmDrm\n");
     len += pkgi_snprintf(
             data + len, sizeof(data) - len, "sort %s\n", sort_str(config.sort));
     len += pkgi_snprintf(
@@ -357,16 +331,6 @@ void pkgi_save_config(const Config& config)
                 data + len, sizeof(data) - len, "install_psp_as_pbp 1\n");
     }
 
-    char path[256];
-    pkgi_snprintf(
-            path, sizeof(path), "%s/config.txt", pkgi_get_config_folder());
-
-    if (pkgi_save(path, data, len))
-    {
-        LOG("saved config.txt");
-    }
-    else
-    {
-        LOG("cannot save config.txt");
-    }
+    pkgi_save(
+            fmt::format("{}/config.txt", pkgi_get_config_folder()), data, len);
 }

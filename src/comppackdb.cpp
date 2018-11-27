@@ -28,7 +28,7 @@ void CompPackDatabase::reopen()
 {
     LOG("opening database %s", _dbPath.c_str());
     sqlite3* db;
-    SQLITE_CHECK(sqlite3_open(_dbPath.c_str(), &db), "无法打开数据表");
+    SQLITE_CHECK(sqlite3_open(_dbPath.c_str(), &db), "can't open database");
     _sqliteDb.reset(db);
 
     try
@@ -44,7 +44,7 @@ void CompPackDatabase::reopen()
                         -1,
                         &stmt,
                         nullptr),
-                "数据表完整性检查失败");
+                "sanity select failed");
         sqlite3_finalize(stmt);
     }
     catch (const std::exception& e)
@@ -62,7 +62,7 @@ void CompPackDatabase::reopen()
             app_version TEXT NOT NULL,
             path TEXT NOT NULL,
             PRIMARY KEY (titleid, app_version)
-        ))", "适配包列表创建失败");
+        ))", "can't create comp pack table");
 }
 
 namespace
@@ -150,13 +150,13 @@ void CompPackDatabase::parse_entries(std::string& db_data)
             current_line = ptr;
             const auto fields = pkgi_split_row(&ptr, end);
             if (fields.size() < 1)
-                throw std::runtime_error("分割行失败");
+                throw std::runtime_error("分析行失敗");
 
             const auto path = std::string(fields[0]);
 
             std::smatch matches;
             if (!std::regex_search(path, matches, regex))
-                throw formatEx<std::runtime_error>("regex 不匹配");
+                throw formatEx<std::runtime_error>("正則表達式不匹配");
             const auto titleid = matches.str(1);
             const auto app_version = matches.str(3);
 
@@ -169,13 +169,13 @@ void CompPackDatabase::parse_entries(std::string& db_data)
             auto err = sqlite3_step(stmt);
             if (err != SQLITE_DONE)
                 throw std::runtime_error(fmt::format(
-                        "无法执行SQL查询:\n{}",
+                        "無法執行SQL語句:\n{}",
                         sqlite3_errmsg(_sqliteDb.get())));
         }
         catch (const std::exception& e)
         {
             throw formatEx<std::runtime_error>(
-                    "无法分割行\n{}", current_line);
+                    "分析行失敗\n{}\n{}", current_line, e.what());
         }
     }
 }
@@ -187,7 +187,7 @@ void CompPackDatabase::update(Http* http, const std::string& update_url)
     uint64_t db_size = 0;
 
     if (update_url.empty())
-        throw std::runtime_error("no comp pack url");
+        throw std::runtime_error("無兼容包定位地址");
 
     LOGF("loading comp pack list from {}", update_url);
 
@@ -197,7 +197,7 @@ void CompPackDatabase::update(Http* http, const std::string& update_url)
 
     if (length > (int64_t)db_data.size())
         throw std::runtime_error(
-                "列表过长");
+                "兼容包列表過大... 請更新PKGj版本");
 
     for (;;)
     {
@@ -211,7 +211,7 @@ void CompPackDatabase::update(Http* http, const std::string& update_url)
 
     if (db_size == 0)
         throw std::runtime_error(
-                "列表为空");
+                "兼容包列表爲空... 請更新PKGj版本");
 
     LOG("parsing items");
 
@@ -253,7 +253,7 @@ std::optional<CompPackDatabase::Item> CompPackDatabase::get(
         return std::nullopt;
     if (err != SQLITE_ROW)
         throw std::runtime_error(fmt::format(
-                "无法执行SQL查询:\n{}",
+                "無法執行的SQL語句:\n{}",
                 sqlite3_errmsg(_sqliteDb.get())));
 
     std::string app_version =

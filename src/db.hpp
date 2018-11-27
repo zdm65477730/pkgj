@@ -5,49 +5,52 @@
 
 #include <array>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
 #include <cstdint>
 
-typedef enum {
+enum DbPresence
+{
     PresenceUnknown,
     PresenceIncomplete,
     PresenceInstalling,
     PresenceInstalled,
     PresenceMissing,
     PresenceGamePresent,
-} DbPresence;
+};
 
-typedef enum {
+enum DbSort
+{
     SortByTitle,
     SortByRegion,
     SortByName,
     SortBySize,
     SortByDate,
-} DbSort;
+};
 
-typedef enum {
+enum DbSortOrder
+{
     SortAscending,
     SortDescending,
-} DbSortOrder;
+};
 
-typedef enum {
+enum DbFilter
+{
     DbFilterRegionASA = 0x01,
     DbFilterRegionEUR = 0x02,
     DbFilterRegionJPN = 0x04,
     DbFilterRegionUSA = 0x08,
 
-    // TODO: implement these two
     DbFilterInstalled = 0x10,
-    DbFilterMissing = 0x20,
 
     DbFilterAllRegions = DbFilterRegionUSA | DbFilterRegionEUR |
                          DbFilterRegionJPN | DbFilterRegionASA,
-    DbFilterAll = DbFilterAllRegions | DbFilterInstalled | DbFilterMissing,
-} DbFilter;
+    DbFilterAll = DbFilterAllRegions,
+};
 
-typedef struct
+struct DbItem
 {
     DbPresence presence;
     std::string titleid;
@@ -62,39 +65,45 @@ typedef struct
     int64_t size;
     std::string date;
     std::string app_version;
-} DbItem;
+    std::string fw_version;
+};
 
-typedef enum {
+enum GameRegion
+{
     RegionASA,
     RegionEUR,
     RegionJPN,
     RegionUSA,
     RegionUnknown,
-} GameRegion;
+};
 
-typedef enum {
+enum Mode
+{
     ModeGames,
-    ModeUpdates,
     ModeDlcs,
     ModePsmGames,
     ModePsxGames,
     ModePspGames,
-} Mode;
+};
+
+static constexpr auto ModeCount = 5;
 
 std::string pkgi_mode_to_string(Mode mode);
 
 class TitleDatabase
 {
 public:
-    TitleDatabase(Mode mode, const std::string& dbPath);
+    TitleDatabase(const std::string& dbPath);
 
     void reload(
+            Mode mode,
             uint32_t region_filter,
             DbSort sort_by,
             DbSortOrder sort_order,
-            const std::string& search);
+            const std::string& search,
+            const std::set<std::string>& installed_games);
 
-    void update(Http* http, const char* update_url);
+    void update(Mode mode, Http* http, const std::string& update_url);
     void get_update_status(uint32_t* updated, uint32_t* total);
 
     uint32_t count();
@@ -106,7 +115,6 @@ private:
     static constexpr auto MAX_DB_SIZE = 4 * 1024 * 1024;
     static constexpr auto MAX_DB_ITEMS = 8192;
 
-    Mode mode;
     std::string _dbPath;
     uint32_t db_total;
     uint32_t db_size;
@@ -116,7 +124,7 @@ private:
 
     SqlitePtr _sqliteDb = nullptr;
 
-    void parse_tsv_file(std::string& db_data);
+    void parse_tsv_file(Mode mode, std::string& db_data);
 
     void reopen();
 };

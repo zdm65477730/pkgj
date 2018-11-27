@@ -1,5 +1,6 @@
 #include "extractzip.hpp"
 
+#include "file.hpp"
 #include "pkgi.hpp"
 
 #include <zip.h>
@@ -12,7 +13,7 @@ void pkgi_extract_zip(const std::string& zip_file, const std::string& dest)
     const auto zip_fd = zip_open(zip_file.c_str(), ZIP_RDONLY, &err);
     if (!zip_fd)
         throw formatEx<std::runtime_error>(
-                "failed to open zip {}:\n{}", zip_file, err);
+                "無法打開壓縮包 {}:\n{}", zip_file, err);
     BOOST_SCOPE_EXIT_ALL(&)
     {
         zip_close(zip_fd);
@@ -30,9 +31,9 @@ void pkgi_extract_zip(const std::string& zip_file, const std::string& dest)
                     zip_strerror(zip_fd));
 
         if (!(stat.valid & ZIP_STAT_NAME))
-            throw std::runtime_error("unsupported zip: no file name");
+            throw std::runtime_error("不支持的壓縮文件: 文件名稱缺失");
         if (!(stat.valid & ZIP_STAT_SIZE))
-            throw std::runtime_error("unsupported zip: no file size");
+            throw std::runtime_error("不支持的壓縮文件: 容量信息缺失");
 
         std::string path = stat.name;
         if (path[path.size() - 1] == '/')
@@ -58,7 +59,7 @@ void pkgi_extract_zip(const std::string& zip_file, const std::string& dest)
 
             const auto out_fd = pkgi_create((dest + '/' + path).c_str());
             if (!out_fd)
-                throw formatEx<std::runtime_error>("can't open file {}", path);
+                throw formatEx<std::runtime_error>("打開文件失敗 {}", path);
             BOOST_SCOPE_EXIT_ALL(&)
             {
                 pkgi_close(out_fd);

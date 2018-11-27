@@ -4,15 +4,14 @@
 
 typedef struct pkgi_input pkgi_input;
 
-typedef enum {
+typedef enum
+{
     MenuResultSearch,
     MenuResultSearchClear,
     MenuResultAccept,
     MenuResultCancel,
     MenuResultRefresh,
-    MenuResultRefreshCompPack,
     MenuResultShowGames,
-    MenuResultShowUpdates,
     MenuResultShowDlcs,
     MenuResultShowPsxGames,
     MenuResultShowPspGames,

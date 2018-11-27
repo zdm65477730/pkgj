@@ -1,13 +1,14 @@
 #include "pkgi.hpp"
 
-extern "C" {
+extern "C"
+{
 #include "style.h"
 }
 #include "config.hpp"
 #include "db.hpp"
-#include "extractzip.hpp"
+#include "file.hpp"
 #include "http.hpp"
-#include "sfo.hpp"
+#include "log.hpp"
 
 #include <fmt/format.h>
 
@@ -65,7 +66,6 @@ static int g_log_socket;
 
 #define VITA_COLOR(c) RGBA8((c)&0xff, (c >> 8) & 0xff, (c >> 16) & 0xff, 255)
 
-#define PKGI_ERRNO_EEXIST (int)(0x80010000 + SCE_NET_EEXIST)
 #define PKGI_ERRNO_ENOENT (int)(0x80010000 + SCE_NET_ENOENT)
 
 #ifdef PKGI_ENABLE_LOGGING
@@ -526,8 +526,8 @@ void pkgi_start(void)
         pkgi_save("ux0:pkgi/config.txt",data1,length);
      }
     vita2d_init_advanced(4 * 1024 * 1024);
+    //g_font = vita2d_load_default_pgf();
     g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00000/font.pgf");
-
     g_time = sceKernelGetProcessTimeWide();
 
     sqlite3_rw_init();
@@ -639,94 +639,24 @@ uint64_t pkgi_get_free_space(const char* requested_partition)
     return info.free_size;
 }
 
-const char* pkgi_get_config_folder(void)
+const char* pkgi_get_config_folder()
 {
-    if (pkgi_file_exists("ur0:pkgi/config.txt"))
-        return "ur0:pkgi";
-    else
-        return "ux0:pkgi";
+    if (0)
+    {
+    }
+#define CHECK_FOLDER(f) else if (pkgi_file_exists(f "/config.txt")) return f
+    CHECK_FOLDER("ur0:pkgj");
+    CHECK_FOLDER("ux0:pkgj");
+    CHECK_FOLDER("ur0:pkgi");
+    CHECK_FOLDER("ux0:pkgi");
+#undef CHECK_FOLDER
+    else throw std::runtime_error("no config.txt found");
 }
 
 int pkgi_is_incomplete(const char* partition, const char* contentid)
 {
     return pkgi_file_exists(
-            fmt::format("{}pkgi/{}.resume", partition, contentid).c_str());
-}
-
-int pkgi_is_installed(const char* titleid)
-{
-    int ret = -1;
-    LOG("calling scePromoterUtilityCheckExist on %s", titleid);
-    int res = scePromoterUtilityCheckExist(titleid, &ret);
-    LOG("res=%d ret=%d", res, ret);
-    return res == 0;
-}
-
-bool pkgi_update_is_installed(
-        const std::string& titleid, const std::string& request_version)
-{
-    const auto patch_dir = fmt::format("ux0:patch/{}", titleid);
-
-    if (!pkgi_file_exists(patch_dir.c_str()))
-        return false;
-
-    const auto sfo = pkgi_load(fmt::format("{}/sce_sys/param.sfo", patch_dir));
-    const auto installed_version =
-            pkgi_sfo_get_string(sfo.data(), sfo.size(), "APP_VER");
-
-    const auto full_request_version = fmt::format("{:0>5}", request_version);
-
-    if (installed_version != full_request_version)
-        return false;
-
-    return true;
-}
-
-int pkgi_dlc_is_installed(const char* content)
-{
-    return pkgi_file_exists(
-            fmt::format("ux0:addcont/{:.9}/{:.16}", content + 7, content + 20)
-                    .c_str());
-}
-
-int pkgi_psm_is_installed(const char* titleid)
-{
-    return pkgi_file_exists(fmt::format("ux0:psm/{}", titleid).c_str());
-}
-
-int pkgi_psp_is_installed(const char* psppartition, const char* content)
-{
-    return pkgi_file_exists(
-                   fmt::format(
-                           "{}pspemu/ISO/{:.9}.iso", psppartition, content + 7)
-                           .c_str()) ||
-           pkgi_file_exists(
-                   fmt::format(
-                           "{}pspemu/PSP/GAME/{:.9}", psppartition, content + 7)
-                           .c_str());
-}
-
-int pkgi_psx_is_installed(const char* psppartition, const char* content)
-{
-    return pkgi_file_exists(
-            fmt::format("{}pspemu/PSP/GAME/{:.9}", psppartition, content + 7)
-                    .c_str());
-}
-
-void pkgi_install(const char* contentid)
-{
-    char path[128];
-    snprintf(path, sizeof(path), "ux0:pkgi/%s", contentid);
-
-    LOG("calling scePromoterUtilityPromotePkgWithRif on %s", path);
-    const auto res = scePromoterUtilityPromotePkgWithRif(path, 1);
-    if (res < 0)
-        throw formatEx<std::runtime_error>(
-                "调用NoNpDRM函数错误: {:#08x}\n{}",
-                static_cast<uint32_t>(res),
-                static_cast<uint32_t>(res) == 0x80870004
-                        ? "请检查插件的安装"
-                        : "");
+            fmt::format("{}pkgj/{}.resume", partition, contentid).c_str());
 }
 
 void pkgi_delete_dir(const std::string& path)
@@ -784,142 +714,6 @@ void pkgi_delete_dir(const std::string& path)
                 static_cast<uint32_t>(res));
 }
 
-void pkgi_install_update(const char* contentid)
-{
-    pkgi_mkdirs("ux0:patch");
-
-    const auto titleid = fmt::format("{:.9}", contentid + 7);
-    const auto src = fmt::format("ux0:pkgi/{}", contentid);
-    const auto dest = fmt::format("ux0:patch/{}", titleid);
-
-    LOGF("deleting previous patch at {}", dest);
-    pkgi_delete_dir(dest);
-
-    LOGF("installing update from {} to {}", src, dest);
-    const auto res = sceIoRename(src.c_str(), dest.c_str());
-    if (res < 0)
-        throw formatEx<std::runtime_error>(
-                "failed to rename: {:#08x}", static_cast<uint32_t>(res));
-
-    const auto sfo = pkgi_load(fmt::format("{}/sce_sys/param.sfo", dest));
-    const auto version = pkgi_sfo_get_string(sfo.data(), sfo.size(), "APP_VER");
-
-    LOGF("found version is {}", version);
-    if (version.empty())
-        throw std::runtime_error("no version field found in param.sfo");
-    if (version.size() != 5)
-        throw formatEx<std::runtime_error>(
-                "version field of incorrect size: {}", version.size());
-
-    SqlitePtr _sqliteDb;
-    sqlite3* raw_appdb;
-    SQLITE_CHECK(
-            sqlite3_open("ur0:shell/db/app.db", &raw_appdb),
-            "can't open app.db database");
-    _sqliteDb.reset(raw_appdb);
-
-    sqlite3_stmt* stmt;
-    SQLITE_CHECK(
-            sqlite3_prepare_v2(
-                    _sqliteDb.get(),
-                    R"(UPDATE tbl_appinfo
-                    SET val = ?
-                    WHERE titleId = ? AND key = 3168212510)",
-                    -1,
-                    &stmt,
-                    nullptr),
-            "can't prepare version update SQL statement");
-    BOOST_SCOPE_EXIT_ALL(&)
-    {
-        sqlite3_finalize(stmt);
-    };
-
-    sqlite3_bind_text(stmt, 1, version.data(), version.size(), nullptr);
-    sqlite3_bind_text(stmt, 2, titleid.data(), titleid.size(), nullptr);
-
-    const auto err = sqlite3_step(stmt);
-    if (err != SQLITE_DONE)
-        throw formatEx<std::runtime_error>(
-                "can't execute version update SQL statement:\n{}",
-                sqlite3_errmsg(_sqliteDb.get()));
-}
-
-void pkgi_install_comppack(const char* titleid)
-{
-    const auto src = fmt::format("ux0:pkgi/{}-comp.ppk", titleid);
-    const auto dest = fmt::format("ux0:rePatch/{}", titleid);
-
-    pkgi_mkdirs(dest.c_str());
-
-    pkgi_mkdirs(dest.c_str());
-
-    LOGF("installing comp pack from {} to {}", src, dest);
-    pkgi_extract_zip(src, dest);
-}
-
-void pkgi_install_psmgame(const char* contentid)
-{
-    pkgi_mkdirs("ux0:psm");
-    const auto titleid = fmt::format("{:.9}", contentid + 7);
-    const auto src = fmt::format("ux0:pkgi/{}", contentid);
-    const auto dest = fmt::format("ux0:psm/{}", titleid);
-
-    LOGF("installing psm game from {} to {}", src, dest);
-    const auto res = sceIoRename(src.c_str(), dest.c_str());
-    if (res < 0)
-        throw formatEx<std::runtime_error>(
-                "failed to rename: {:#08x}", static_cast<uint32_t>(res));
-}
-
-void pkgi_install_pspgame(const char* partition, const char* contentid)
-{
-    LOG("Installing a PSP/PSX game");
-    const auto path = fmt::format("{}pkgi/{}", partition, contentid);
-    const auto dest =
-            fmt::format("{}pspemu/PSP/GAME/{:.9}", partition, contentid + 7);
-
-    pkgi_mkdirs(fmt::format("{}pspemu/PSP/GAME", partition).c_str());
-
-    LOG("installing psx game at %s to %s", path.c_str(), dest.c_str());
-    int res = sceIoRename(path.c_str(), dest.c_str());
-    if (res < 0)
-        throw std::runtime_error(fmt::format(
-                "failed to rename: {:#08x}", static_cast<uint32_t>(res)));
-}
-
-void pkgi_install_pspgame_as_iso(const char* partition, const char* contentid)
-{
-    const auto path = fmt::format("{}pkgi/{}", partition, contentid);
-    const auto dest =
-            fmt::format("{}pspemu/PSP/GAME/{:.9}", partition, contentid + 7);
-
-    // this is actually a misnamed ISO file
-    const auto eboot = fmt::format("{}/EBOOT.PBP", path);
-    const auto content = fmt::format("{}/CONTENT.DAT", path);
-    const auto pspkey = fmt::format("{}/PSP-KEY.EDAT", path);
-    const auto isodest =
-            fmt::format("{}pspemu/ISO/{:.9}.iso", partition, contentid + 7);
-
-    pkgi_mkdirs(fmt::format("{}pspemu/ISO", partition).c_str());
-
-    LOG("installing psp game at %s to %s", path.c_str(), dest.c_str());
-    pkgi_rename(eboot.c_str(), isodest.c_str());
-
-    const auto content_exists = pkgi_file_exists(content.c_str());
-    const auto pspkey_exists = pkgi_file_exists(pspkey.c_str());
-    if (content_exists || pspkey_exists)
-        pkgi_mkdirs(dest.c_str());
-
-    if (content_exists)
-        pkgi_rename(
-                content.c_str(), fmt::format("{}/CONTENT.DAT", dest).c_str());
-    if (pspkey_exists)
-        pkgi_rename(
-                pspkey.c_str(), fmt::format("{}/PSP-KEY.EDAT", dest).c_str());
-
-    pkgi_delete_dir(path);
-}
-
 uint32_t pkgi_time_msec()
 {
     return sceKernelGetProcessTimeLow() / 1000;
@@ -950,91 +744,6 @@ void pkgi_start_thread(const char* name, pkgi_thread_entry* start)
 void pkgi_sleep(uint32_t msec)
 {
     sceKernelDelayThread(msec * 1000);
-}
-
-int pkgi_load(const char* name, void* data, uint32_t max)
-{
-    SceUID fd = sceIoOpen(name, SCE_O_RDONLY, 0777);
-    if (fd < 0)
-    {
-        return -1;
-    }
-
-    char* data8 = static_cast<char*>(data);
-
-    int total = 0;
-    while (max != 0)
-    {
-        int read = sceIoRead(fd, data8 + total, max);
-        if (read < 0)
-        {
-            total = -1;
-            break;
-        }
-        else if (read == 0)
-        {
-            break;
-        }
-        total += read;
-        max -= read;
-    }
-
-    sceIoClose(fd);
-    return total;
-}
-
-std::vector<uint8_t> pkgi_load(const std::string& path)
-{
-    SceUID fd = sceIoOpen(path.c_str(), SCE_O_RDONLY, 0777);
-    if (fd < 0)
-        throw std::runtime_error(fmt::format(
-                "sceIoOpen({}) failed:\n{:#08x}",
-                path.c_str(),
-                static_cast<uint32_t>(fd)));
-
-    const auto size = sceIoLseek(fd, 0, SCE_SEEK_END);
-    sceIoLseek(fd, 0, SCE_SEEK_SET);
-
-    std::vector<uint8_t> data(size);
-
-    const auto read = sceIoRead(fd, data.data(), data.size());
-    if (read < 0)
-        throw std::runtime_error(fmt::format(
-                "sceIoRead({}) failed:\n{:#08x}",
-                path.c_str(),
-                static_cast<uint32_t>(read)));
-
-    data.resize(read);
-
-    sceIoClose(fd);
-
-    return data;
-}
-
-int pkgi_save(const char* name, const void* data, uint32_t size)
-{
-    SceUID fd = sceIoOpen(name, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
-    if (fd < 0)
-    {
-        return 0;
-    }
-
-    int ret = 1;
-    const char* data8 = static_cast<const char*>(data);
-    while (size != 0)
-    {
-        int written = sceIoWrite(fd, data8, size);
-        if (written <= 0)
-        {
-            ret = 0;
-            break;
-        }
-        data8 += written;
-        size -= written;
-    }
-
-    sceIoClose(fd);
-    return ret;
 }
 
 void pkgi_lock_process(void)
@@ -1112,172 +821,17 @@ int pkgi_text_height(const char* text)
     return 23;
 }
 
-void pkgi_mkdirs(const char* ppath)
-{
-    std::string path = ppath;
-    path.push_back('/');
-    auto ptr = path.begin();
-    while (true)
-    {
-        ptr = std::find(ptr, path.end(), '/');
-        if (ptr == path.end())
-            break;
-
-        char last = *ptr;
-        *ptr = 0;
-        LOG("mkdir %s", path.c_str());
-        int err = sceIoMkdir(path.c_str(), 0777);
-        if (err < 0 && err != PKGI_ERRNO_EEXIST)
-            throw std::runtime_error(fmt::format(
-                    "sceIoMkdir({}) failed:\n{:#08x}",
-                    path.c_str(),
-                    static_cast<uint32_t>(err)));
-        *ptr = last;
-        ++ptr;
-    }
-}
-
-void pkgi_rm(const char* file)
-{
-    int err = sceIoRemove(file);
-    if (err < 0)
-    {
-        LOG("error removing %s file, err=0x%08x", file, err);
-    }
-}
-
-int64_t pkgi_get_size(const char* path)
-{
-    SceIoStat stat;
-    int err = sceIoGetstat(path, &stat);
-    if (err < 0)
-    {
-        LOG("cannot get size of %s, err=0x%08x", path, err);
-        return -1;
-    }
-    return stat.st_size;
-}
-
-int pkgi_file_exists(const char* path)
-{
-    SceIoStat stat;
-    return sceIoGetstat(path, &stat) >= 0;
-}
-
-void pkgi_rename(const char* from, const char* to)
-{
-    int res = sceIoRename(from, to);
-    if (res < 0)
-        throw std::runtime_error(fmt::format(
-                "failed to rename from {} to {}:\n{:#08x}",
-                from,
-                to,
-                static_cast<uint32_t>(res)));
-}
-
-void* pkgi_create(const char* path)
-{
-    LOG("sceIoOpen create on %s", path);
-    SceUID fd = sceIoOpen(path, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
-    if (fd < 0)
-    {
-        LOG("cannot create %s, err=0x%08x", path, fd);
-        return NULL;
-    }
-    LOG("sceIoOpen returned fd=%d", fd);
-
-    return (void*)(intptr_t)fd;
-}
-
-void* pkgi_openrw(const char* path)
-{
-    LOG("sceIoOpen openrw on %s", path);
-    SceUID fd = sceIoOpen(path, SCE_O_RDWR, 0777);
-    if (fd < 0)
-    {
-        LOG("cannot openrw %s, err=0x%08x", path, fd);
-        return NULL;
-    }
-    LOG("sceIoOpen returned fd=%d", fd);
-
-    return (void*)(intptr_t)fd;
-}
-
-void* pkgi_append(const char* path)
-{
-    LOG("sceIoOpen append on %s", path);
-    SceUID fd =
-            sceIoOpen(path, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_APPEND, 0777);
-    if (fd < 0)
-    {
-        LOG("cannot append %s, err=0x%08x", path, fd);
-        return NULL;
-    }
-    LOG("sceIoOpen returned fd=%d", fd);
-
-    return (void*)(intptr_t)fd;
-}
-
-int64_t pkgi_seek(void* f, uint64_t offset)
-{
-    LOGF("seeking to {}", offset);
-    auto const pos = sceIoLseek((intptr_t)f, offset, SCE_SEEK_SET);
-    if (pos < 0)
-    {
-        LOGF("sceIoLseek failed: {:#016x}", pos);
-        return -1;
-    }
-    return pos;
-}
-
-int pkgi_read(void* f, void* buffer, uint32_t size)
-{
-    LOG("asking to read %u bytes", size);
-    int read = sceIoRead((SceUID)(intptr_t)f, buffer, size);
-    if (read < 0)
-    {
-        LOG("sceIoRead error 0x%08x", read);
-    }
-    else
-    {
-        LOG("read %d bytes", read);
-    }
-    return read;
-}
-
-int pkgi_write(void* f, const void* buffer, uint32_t size)
-{
-    // LOG("asking to write %u bytes", size);
-    int write = sceIoWrite((SceUID)(intptr_t)f, buffer, size);
-    if (write < 0)
-    {
-        LOG("sceIoWrite error 0x%08x", write);
-        return -1;
-    }
-
-    // LOG("wrote %d bytes", write);
-    return (uint32_t)write == size;
-}
-
-void pkgi_close(void* f)
-{
-    SceUID fd = (SceUID)(intptr_t)f;
-    LOG("closing file %d", fd);
-    int err = sceIoClose(fd);
-    if (err < 0)
-    {
-        LOG("close error 0x%08x", err);
-    }
-}
-
 std::string pkgi_get_system_version()
 {
-    SceKernelFwInfo info{};
-    info.size = sizeof(info);
-    const auto res = _vshSblGetSystemSwVersion(&info);
-    if (res < 0)
-        throw std::runtime_error(fmt::format(
-                "sceKernelGetSystemSwVersion failed: {:#08x}",
-                static_cast<uint32_t>(res)));
-    return info.versionString;
+    static auto const version = [] {
+        SceKernelFwInfo info{};
+        info.size = sizeof(info);
+        const auto res = _vshSblGetSystemSwVersion(&info);
+        if (res < 0)
+            throw std::runtime_error(fmt::format(
+                    "sceKernelGetSystemSwVersion failed: {:#08x}",
+                    static_cast<uint32_t>(res)));
+        return std::string(info.versionString);
+    }();
+    return version;
 }
