@@ -30,9 +30,6 @@ extern "C"
 #include <cstddef>
 #include <cstring>
 
-#define PKGI_UPDATE_URL \
-    "https://api.github.com/repos/blastrock/pkgj/releases/latest"
-
 namespace
 {
 typedef enum
@@ -104,7 +101,7 @@ void configure_db(TitleDatabase* db, const char* search, const Config* config)
         snprintf(
                 error_state,
                 sizeof(error_state),
-                "無法加載列表: %s",
+                "無法重新加載列表: %s",
                 e.what());
         pkgi_dialog_error(error_state);
     }
@@ -157,7 +154,7 @@ void pkgi_refresh_thread(void)
             {
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
-                        "正在刷新游戲本體兼容包 [{}/{}]",
+                        "正在刷新 游戲本體兼容包 [{}/{}]",
                         ModeCount + 2 - 1,
                         ModeCount + 2);
             }
@@ -169,7 +166,7 @@ void pkgi_refresh_thread(void)
             {
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
-                        "正在刷新游戲更新兼容包 [{}/{}]",
+                        "正在刷新 游戲更新兼容包 [{}/{}]",
                         ModeCount + 2,
                         ModeCount + 2);
             }
@@ -227,7 +224,7 @@ void pkgi_install_package(Downloader& downloader, DbItem* item)
     case ModePspGames:
         if (item->presence == PresenceInstalled)
         {
-            LOGF("[{}] {} - 已安裝", item->titleid, item->name);
+            LOGF("[{}] {} - already installed", item->titleid, item->name);
             pkgi_dialog_error("已安裝");
             return;
         }
@@ -235,14 +232,14 @@ void pkgi_install_package(Downloader& downloader, DbItem* item)
     case ModeDlcs:
         if (item->presence == PresenceInstalled)
         {
-            LOGF("[{}] {} - 已安裝", item->content, item->name);
+            LOGF("[{}] {} - already installed", item->content, item->name);
             pkgi_dialog_error("已安裝");
             return;
         }
         if (item->presence != PresenceGamePresent)
         {
-            LOGF("[{}] {} - 未安裝游戲", item->titleid, item->name);
-            pkgi_dialog_error("未安裝相應的游戲");
+            LOGF("[{}] {} - game not installed", item->titleid, item->name);
+            pkgi_dialog_error("未安裝該追加下載内容對應的游戲");
             return;
         }
         break;
@@ -543,7 +540,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
 
     if (db_count == 0)
     {
-        const char* text = "無數據!請嘗試刷新";
+        const char* text = "無數據! 請嘗試刷新.";
 
         int w = pkgi_text_width(text);
         pkgi_draw_text(
@@ -659,7 +656,7 @@ void pkgi_do_head(void)
         pkgi_snprintf(
                 battery,
                 sizeof(battery),
-                "電池電量: %u%%",
+                "電池: %u%%",
                 pkgi_bettery_get_level());
 
         uint32_t color;
@@ -778,7 +775,7 @@ void pkgi_do_tail(Downloader& downloader)
                 static_cast<int>(download_offset * 100 / download_size));
     }
     else
-        pkgi_snprintf(text, sizeof(text), "暫無下載");
+        pkgi_snprintf(text, sizeof(text), "暫無下載任務");
 
     pkgi_draw_text(0, bottom_y, PKGI_COLOR_TEXT_TAIL, text);
 
@@ -836,7 +833,7 @@ void pkgi_do_tail(Downloader& downloader)
     else
     {
         if (mode == ModeGames)
-            bottom_text += fmt::format("{} 詳細 ", pkgi_get_ok_str());
+            bottom_text += fmt::format("{} 詳細信息 ", pkgi_get_ok_str());
         else
         {
             DbItem* item = db->get(selected_item);
@@ -902,10 +899,10 @@ void pkgi_reload()
     }
     catch (const std::exception& e)
     {
-        LOGF("重新加載過程中發生錯誤: {}", e.what());
+        LOGF("error during reload: {}", e.what());
         pkgi_dialog_error(
                 fmt::format(
-                        "重新加載數據庫失敗: {}，請嘗試刷新?", e.what())
+                        "數據庫重新加載失敗: {}, 請嘗試刷新?", e.what())
                         .c_str());
     }
 }
@@ -916,8 +913,7 @@ void pkgi_open_db()
     {
         first_item = 0;
         selected_item = 0;
-        db = std::make_unique<TitleDatabase>(
-                std::string(pkgi_get_config_folder()) + "/pkgj.db");
+        db = std::make_unique<TitleDatabase>(pkgi_get_config_folder());
 
         comppack_db_games = std::make_unique<CompPackDatabase>(
                 std::string(pkgi_get_config_folder()) + "/comppack.db");
@@ -926,9 +922,9 @@ void pkgi_open_db()
     }
     catch (const std::exception& e)
     {
-        LOGF("數據庫打開過程中發生錯誤: {}", e.what());
+        LOGF("error during database open: {}", e.what());
         throw formatEx<std::runtime_error>(
-                "數據庫初始化失敗: %s\n是否嘗試刪除數據緩存?");
+                "數據庫初始化失敗: %s\n是否要清除數據庫緩存?");
     }
 
     pkgi_reload();
@@ -937,7 +933,7 @@ void pkgi_open_db()
 
 void pkgi_start_download(Downloader& downloader, const DbItem& item)
 {
-    LOGF("[{}] {} - 開始安裝", item.content, item.name);
+    LOGF("[{}] {} - starting to install", item.content, item.name);
 
     // Just use the maximum size to be safe
     uint8_t rif[PKGI_PSM_RIF_SIZE];
@@ -976,8 +972,8 @@ int main()
     {
         if (!pkgi_is_unsafe_mode())
             throw std::runtime_error(
-                    "PKGj需要在Henkaku中啓用不安全自製軟件"
-                    "設置!");
+                    "PKGj 需要在 Henkaku 設置中啓用不安全自製"
+                    "軟件!");
 
         Downloader downloader;
 
@@ -1015,24 +1011,12 @@ int main()
         // Build and load the texture atlas into a texture
         uint32_t* pixels = NULL;
         int width, height;
-        /*if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/ltn0.pvf",
-                    20.0f,
-                    0,
-                    io.Fonts->GetGlyphRangesDefault()))
-            throw std::runtime_error("無法加載ltn0.pvf");
-        if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/jpn0.pvf",
-                    20.0f,
-                    0,
-                    io.Fonts->GetGlyphRangesJapanese()))
-            throw std::runtime_error("無法加載jpn0.pvf");*/
         if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/cn0.pvf",
                     20.0f,
                     0,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("無法加載cn0.pvf");
+            throw std::runtime_error("無法加載 ltn0.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);
@@ -1082,7 +1066,7 @@ int main()
                     if (item)
                         item->presence = PresenceUnknown;
                     else
-                        LOGF("無法找到 {} 用於刷新",
+                        LOGF("couldn't find {} for refresh",
                              content_to_refresh);
                     content_to_refresh.clear();
                 }
@@ -1160,7 +1144,7 @@ int main()
                     switch (mres)
                     {
                     case MenuResultSearch:
-                        pkgi_dialog_input_text("搜索", search_text);
+                        pkgi_dialog_input_text("Search", search_text);
                         break;
                     case MenuResultSearchClear:
                         search_active = 0;
@@ -1215,7 +1199,7 @@ int main()
     }
     catch (const std::exception& e)
     {
-        LOGF("主要錯誤: {}", e.what());
+        LOGF("Error in main: {}", e.what());
         state = StateError;
         pkgi_snprintf(
                 error_state, sizeof(error_state), "致命錯誤: %s", e.what());

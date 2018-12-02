@@ -34,7 +34,7 @@ void FileDownload::start_download()
 
     const auto http_length = _http->get_length();
     if (http_length < 0)
-        throw DownloadError("HTTP相應長度未知");
+        throw DownloadError("HTTP 響應的長度未知");
 
     download_size = http_length;
     LOGF("http response length = {}", download_size);
@@ -43,7 +43,7 @@ void FileDownload::start_download()
 void FileDownload::download_data(uint32_t size)
 {
     if (is_canceled())
-        throw std::runtime_error("已取消下載");
+        throw std::runtime_error("下載已被取消");
 
     if (size == 0)
         return;
@@ -57,7 +57,7 @@ void FileDownload::download_data(uint32_t size)
         {
             const int read = _http->read(buffer.data() + pos, size - pos);
             if (read == 0)
-                throw DownloadError("HTTP連接已斷開");
+                throw DownloadError("HTTP 連接已斷開");
             pos += read;
         }
     }

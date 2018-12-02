@@ -40,27 +40,27 @@ static const MenuEntry menu_entries[] = {
         {MenuSearch, "搜索...", 0},
         {MenuSearchClear, PKGI_UTF8_CLEAR " 取消搜索", 0},
 
-        {MenuText, "排序方式:", 0},
+        {MenuText, "排序順序:", 0},
         {MenuSort, "游戲編號", SortByTitle},
         {MenuSort, "發行區域", SortByRegion},
         {MenuSort, "游戲名稱", SortByName},
         {MenuSort, "游戲容量", SortBySize},
-        {MenuSort, "更新日期", SortByDate},
+        {MenuSort, "更新時間", SortByDate},
 
-        {MenuText, "篩選選項:", 0},
+        {MenuText, "篩選項:", 0},
         {MenuFilter, "亞洲", DbFilterRegionASA},
         {MenuFilter, "歐洲", DbFilterRegionEUR},
         {MenuFilter, "日本", DbFilterRegionJPN},
         {MenuFilter, "美國", DbFilterRegionUSA},
-        {MenuFilter, "已安裝的游戲", DbFilterInstalled},
+        {MenuFilter, "已安裝游戲", DbFilterInstalled},
 
         {MenuRefresh, "刷新", 0},
 
-        {MenuShow, "顯示PSV游戲", 1},
-        {MenuShow, "顯示PSV追加下載内容", 2},
-        {MenuShow, "顯示PSX游戲", 4},
-        {MenuShow, "顯示PSP游戲", 8},
-        {MenuShow, "顯示PSM游戲", 16},
+        {MenuShow, "顯示 PSV 游戲", 1},
+        {MenuShow, "顯示 PSV 追加下載内容", 2},
+        {MenuShow, "顯示 PSX 游戲", 4},
+        {MenuShow, "顯示 PSP 游戲", 8},
+        {MenuShow, "顯示 PSM 游戲", 16},
 };
 
 int pkgi_menu_is_open(void)

@@ -15,17 +15,17 @@ std::string type_to_string(Type type)
     switch (type)
     {
     case Type::Game:
-        return "game";
+        return "PSV 游戲";
     case Type::Dlc:
-        return "DLC";
+        return "PSV 追加下載内容";
     case Type::PsmGame:
-        return "PSM game";
+        return "PSM 游戲";
     case Type::PsxGame:
-        return "PSX game";
+        return "PSX 游戲";
     case Type::PspGame:
-        return "PSP game";
+        return "PSP 游戲";
     case Type::CompPack:
-        return "Comp Pack";
+        return "兼容包";
     }
     return "unknown";
 }
@@ -180,7 +180,7 @@ void Downloader::do_download_package(const DownloadItem& item)
         break;
     case CompPack:
         throw std::runtime_error(
-                "無法下載兼容包");
+                "聲明錯誤: 無法處理兼容包的壓縮文件");
     }
     pkgi_rm(fmt::format("{}pkgj/{}.resume", item.partition, item.content)
                     .c_str());

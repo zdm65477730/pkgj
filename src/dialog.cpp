@@ -166,7 +166,7 @@ void pkgi_do_dialog()
     {
         ImGui::Separator();
         if (ImGui::Button(
-                    "好",
+                    "好的",
                     ImVec2{ImGui::GetWindowContentRegionWidth(),
                            ImGui::GetTextLineHeightWithSpacing()}))
         {

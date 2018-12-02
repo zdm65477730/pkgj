@@ -192,18 +192,18 @@ Config pkgi_load_config()
                 config.psm_readme_disclaimer =
                         (pkgi_stricmp(value, "NoPsmDrm") == 0);
         }
-        if (config.games_url.empty()) config.games_url="http://47.100.38.250/tsv_files/PSV_GAMES_SC.tsv";
-        if (config.dlcs_url.empty()) config.dlcs_url="http://47.100.38.250/tsv_files/PSV_DLCS.tsv";
-        if (config.psm_games_url.empty()) config.psm_games_url="http://47.100.38.250/tsv_files/PSM_GAMES.tsv";
-        if (config.psx_games_url.empty()) config.psx_games_url="http://47.100.38.250/tsv_files/PSX_GAMES.tsv";
-        if (config.psp_games_url.empty()) config.psp_games_url="http://47.100.38.250/tsv_files/PSP_GAMES.tsv";
+        if (config.games_url.empty()) config.games_url="http://47.100.37.250/tsv_files/PSV_GAMES_SC.tsv";
+        if (config.dlcs_url.empty()) config.dlcs_url="http://47.100.37.250/tsv_files/PSV_DLCS.tsv";
+        if (config.psm_games_url.empty()) config.psm_games_url="http://47.100.37.250/tsv_files/PSM_GAMES.tsv";
+        if (config.psx_games_url.empty()) config.psx_games_url="http://47.100.37.250/tsv_files/PSX_GAMES.tsv";
+        if (config.psp_games_url.empty()) config.psp_games_url="http://47.100.37.250/tsv_files/PSP_GAMES.tsv";
         if (config.comppack_url.empty()) config.comppack_url="https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/";
         return config;
     }
     catch (const std::exception& e)
     {
         throw formatEx<std::runtime_error>(
-                "加載配置文件錯誤:\n{}", e.what());
+                "加載配置失敗:\n{}", e.what());
     }
 }
 

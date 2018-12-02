@@ -78,10 +78,10 @@ void pkgi_install(const char* contentid)
     const auto res = scePromoterUtilityPromotePkgWithRif(path, 1);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "調用NoNpDrm函數錯誤: {:#08x}\n{}",
+                "調用 NoNpDrm 函數錯誤: {:#08x}\n{}",
                 static_cast<uint32_t>(res),
                 static_cast<uint32_t>(res) == 0x80870004
-                        ? "請檢查NoNpDrm插件安裝是否正確"
+                        ? "請檢查 NoNpDrm 插件安裝是否正確"
                         : "");
 }
 
@@ -107,7 +107,7 @@ void pkgi_install_update(const char* contentid)
 
     LOGF("found version is {}", version);
     if (version.empty())
-        throw std::runtime_error("在param.sfo中無法獲取版本參數");
+        throw std::runtime_error("在 param.sfo 中無法獲取版本參數");
     if (version.size() != 5)
         throw formatEx<std::runtime_error>(
                 "版本參數不正確: {}", version.size());
@@ -141,7 +141,7 @@ void pkgi_install_update(const char* contentid)
     const auto err = sqlite3_step(stmt);
     if (err != SQLITE_DONE)
         throw formatEx<std::runtime_error>(
-                "無法執行版本更新的SQL語句:\n{}",
+                "無法執行版本更新的 SQL 語句:\n{}",
                 sqlite3_errmsg(_sqliteDb.get()));
 }
 
@@ -152,7 +152,7 @@ void pkgi_install_comppack(
     const auto dest = fmt::format("ux0:rePatch/{}", titleid);
 
     if (!patch)
-        pkgi_delete_dir(dest);
+        pkgi_delete_dir(dest + "/patch_comppack_version");
 
     pkgi_mkdirs(dest.c_str());
 

@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#define PKGJ_UPDATE_URL "https://raw.githubusercontent.com/blastrock/pkgj/last"
+#define PKGJ_UPDATE_URL "http://47.100.37.250/pkgj"
 #define PKGJ_UPDATE_URL_VERSION PKGJ_UPDATE_URL "/version"
 
 namespace
@@ -23,9 +23,9 @@ void start_download()
         const auto filename = fmt::format(
                 "{}/pkgj-v{}.vpk", pkgi_get_config_folder(), version);
         const auto url =
-                fmt::format("{}/pkgj-v{}.vpk", PKGJ_UPDATE_URL, version);
+                fmt::format("{}/files/pkgj-v{}.vpk", PKGJ_UPDATE_URL, version);
 
-        pkgi_dialog_message("正在下載更新", 0);
+        pkgi_dialog_message("正在下載新版本安裝文件...", 0);
 
         try
         {
@@ -57,8 +57,8 @@ void start_download()
 
         pkgi_dialog_message(
                 fmt::format(
-                        "新版本PKGj安裝文件已下載至 {}, 請"
-                        "通過VitaShell進行安裝.",
+                        "新版本 PKGj 安裝文件已下載至 {}, 請通"
+                        "過 VitaShell 進行安裝.",
                         filename)
                         .c_str());
     }
@@ -91,16 +91,16 @@ void update_thread()
 
             pkgi_dialog_question(
                     fmt::format(
-                            "PKGj已更新至 {} 版本!\n是否立即"
+                            "PKGj 現已更新至 {} 版本!\n是否立即"
                             "下載?",
                             last_version)
                             .c_str(),
-                    {{"是",
+                    {{"是的",
                       [] {
                           pkgi_start_thread(
                                   "pkgj_update_download", &start_download);
                       }},
-                     {"否", [] {}}});
+                     {"稍後", [] {}}});
         }
     }
     catch (const std::exception& e)

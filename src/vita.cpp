@@ -512,22 +512,11 @@ void pkgi_start(void)
     {
         sceKernelStartThread(power_thread, 0, NULL);
     }
-    if (!pkgi_file_exists("ux0:pkgi/config.txt"))
-    {
-        pkgi_create("ux0:pkgi/config.txt");
-        if (!pkgi_file_exists("ux0:pkgi/config.txt"))
-        {
-            pkgi_mkdirs("ux0:pkgi");
-            pkgi_create("ux0:pkgi/config.txt");
-        }
-        
-        auto data1 = "install_psp_psx_location ux0:\nsort title\norder asc\nfilter ASA,EUR,JPN,USA";
-        int length = sizeof(data1);
-        pkgi_save("ux0:pkgi/config.txt",data1,length);
-     }
+
     vita2d_init_advanced(4 * 1024 * 1024);
-    //g_font = vita2d_load_default_pgf();
-    g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00000/font.pgf");
+
+    g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00001/font.pgf");
+
     g_time = sceKernelGetProcessTimeWide();
 
     sqlite3_rw_init();
@@ -650,7 +639,7 @@ const char* pkgi_get_config_folder()
     CHECK_FOLDER("ur0:pkgi");
     CHECK_FOLDER("ux0:pkgi");
 #undef CHECK_FOLDER
-    else throw std::runtime_error("no config.txt found");
+    else throw std::runtime_error("配置文件缺失");
 }
 
 int pkgi_is_incomplete(const char* partition, const char* contentid)
@@ -667,7 +656,7 @@ void pkgi_delete_dir(const std::string& path)
 
     if (dfd < 0)
         throw formatEx<std::runtime_error>(
-                "failed sceIoDopen({}):\n{:#08x}",
+                "打開失敗 ({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(dfd));
 
@@ -697,7 +686,7 @@ void pkgi_delete_dir(const std::string& path)
             const auto ret = sceIoRemove(new_path.c_str());
             if (ret < 0)
                 throw formatEx<std::runtime_error>(
-                        "failed sceIoRemove({}):\n{:#08x}",
+                        "刪除失敗 ({}):\n{:#08x}",
                         new_path,
                         static_cast<uint32_t>(ret));
         }
@@ -709,7 +698,7 @@ void pkgi_delete_dir(const std::string& path)
     res = sceIoRmdir(path.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "failed sceIoRmdir({}):\n{:#08x}",
+                "文件夾刪除失敗 ({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(res));
 }
@@ -829,7 +818,7 @@ std::string pkgi_get_system_version()
         const auto res = _vshSblGetSystemSwVersion(&info);
         if (res < 0)
             throw std::runtime_error(fmt::format(
-                    "sceKernelGetSystemSwVersion failed: {:#08x}",
+                    "獲取系統軟件版本失敗: {:#08x}",
                     static_cast<uint32_t>(res)));
         return std::string(info.versionString);
     }();

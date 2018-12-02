@@ -13,7 +13,7 @@ void pkgi_extract_zip(const std::string& zip_file, const std::string& dest)
     const auto zip_fd = zip_open(zip_file.c_str(), ZIP_RDONLY, &err);
     if (!zip_fd)
         throw formatEx<std::runtime_error>(
-                "無法打開壓縮包 {}:\n{}", zip_file, err);
+                "無法打開壓縮文件 {}:\n{}", zip_file, err);
     BOOST_SCOPE_EXIT_ALL(&)
     {
         zip_close(zip_fd);
@@ -25,7 +25,7 @@ void pkgi_extract_zip(const std::string& zip_file, const std::string& dest)
         struct zip_stat stat;
         if (zip_stat_index(zip_fd, i, 0, &stat) != 0)
             throw formatEx<std::runtime_error>(
-                    "can't zip_stat index {} of {}:\n{}",
+                    "無法統計壓縮索引 {} of {}:\n{}",
                     i,
                     zip_file,
                     zip_strerror(zip_fd));
@@ -48,7 +48,7 @@ void pkgi_extract_zip(const std::string& zip_file, const std::string& dest)
             const auto comp_fd = zip_fopen_index(zip_fd, i, 0);
             if (!comp_fd)
                 throw formatEx<std::runtime_error>(
-                        "can't zip_fopen index {} of {}:\n{}",
+                        "無法打開壓縮包索引 {} of {}:\n{}",
                         i,
                         zip_file,
                         zip_strerror(zip_fd));
@@ -59,7 +59,7 @@ void pkgi_extract_zip(const std::string& zip_file, const std::string& dest)
 
             const auto out_fd = pkgi_create((dest + '/' + path).c_str());
             if (!out_fd)
-                throw formatEx<std::runtime_error>("打開文件失敗 {}", path);
+                throw formatEx<std::runtime_error>("無法打開文件 {}", path);
             BOOST_SCOPE_EXIT_ALL(&)
             {
                 pkgi_close(out_fd);

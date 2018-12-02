@@ -23,7 +23,7 @@ void GameView::render()
     ImGui::SetNextWindowSize(ImVec2(GameViewWidth, GameViewHeight), 0);
 
     ImGui::Begin(
-            fmt::format("{}###gameview", _item->titleid)
+            fmt::format("{}###gameview", _item->name, _item->titleid)
                     .c_str(),
             nullptr,
             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -140,8 +140,8 @@ void GameView::printDiagnostic()
     {
         ImGui::TextColored(
                 Yellow,
-                "- 游戲兼容包已安裝,但并非通過PKGj進行安裝, 請"
-                "確保該兼容包與游戲版本相匹配, 如出現運行異常, 請通過PKGj"
+                "- 游戲兼容包已安裝,但并非通過 PKGj 進行安裝, 請"
+                "確保該兼容包與游戲版本相匹配, 如出現運行異常, 請通過 PKGj "
                 "重新安裝");
         ok = false;
     }
@@ -169,7 +169,7 @@ void GameView::printDiagnostic()
         comppack_version > _game_version)
         printError(
                 "- 游戲版本與已安裝的兼容包版本"
-                "不匹配. 請刪除游戲更新文件恢復至初始版本,"
+                "不匹配. 請刪除游戲更新文件恢復至初始版本, "
                 "或通過桌面氣泡更新游戲版本");
 
     if (_item->presence != PresenceInstalled)
@@ -194,7 +194,7 @@ void GameView::start_download_package()
     if (_item->presence == PresenceInstalled)
     {
         LOGF("[{}] {} - already installed", _item->titleid, _item->name);
-        pkgi_dialog_error("游戲已安裝");
+        pkgi_dialog_error("已安裝");
         return;
     }
 
