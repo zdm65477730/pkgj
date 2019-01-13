@@ -1,5 +1,121 @@
 # Changelog
 
+## 0.45
+
+Bug fixes:
+
+- Fix occasional bad_alloc errors
+
+## 0.44
+
+What's new:
+
+- It is now possible to download the latest patch of the selected game. The
+    minimum required firmware version will take into account that latest patch.
+- It is now possible to cancel base or patch compatibility pack installation
+    independently
+- There is no more need for keeping URLs in the configuration file. Default URLs
+    have been set up, it is still possible to override them in the configuration
+    file.
+- pkgj now works when there is no config file at all
+
+Bug fixes:
+
+- Button repeat when keeping a button pressed on game view is now fixed
+- Fixed error when downgrading to base compatibility pack
+
+## 0.43
+
+What's new:
+
+- Database is now stored as plain files, refresh has become much faster
+- When installing a base compatibility pack, the rePatch directory is not erased
+    anymore, to keep potential user-installed custom patches
+
+## 0.42
+
+What's new:
+
+- When in Japanese mode, O now works for confirm in game view
+- Reduced size of the game view window to show the progress bar below
+
+Bug fixes:
+
+- Fixed cancelation of DLC and PSP and PSX games
+
+## 0.41
+
+Bug fixes:
+
+- Do not crash if ur0:app does not exist
+
+## 0.40
+
+What's new:
+
+- It is now possible to filter by installed games
+- When changing mode, the list scrolls back to the top
+
+## 0.39
+
+Bug fixes:
+
+- Fixed installation of DLCs and PSX games
+
+## 0.38
+
+What's new:
+
+- There is a new window when clicking on a game which makes it easier to install
+    games and compatibility packs
+- Added a diagnosis about game installation that helps detecting
+    game/compatibility pack version mismatch
+- Download cancelation is now more reactive
+
+Removed features:
+
+- PKGj can't download game updates anymore as they were outdated. Use the
+    livearea to update your games.
+
+## 0.37
+
+What's new:
+
+- PKGj will now use `ux0:pkgj` and `ur0:pkgj` as configuration and temporary
+    file folder. If the configuration file can't be found, it will fallback to
+    `pkgi` folders
+
+Bug fixes:
+
+- Fixed crash on application start or on download cancel
+
+## 0.36
+
+What's new:
+
+- It is now possible to download the new version of pkgj when one becomes
+    available
+
+## 0.35
+
+Bug fixes:
+
+- Fixed bad_alloc error that happened when installing some PSP games
+
+## 0.34
+
+What's new:
+
+- A message will appear upon start when a new pkgj version is available (unless
+    `no_version_check 1` is in the config file)
+- Dialog messages have been reworked, they include word wrapping for error
+    messages that are too long
+- The menu's refresh item now refreshes all lists at once, including
+    compatibility packs
+- "Show updates" has been renamed to "Show legacy updates" to reflect the fact
+    that they are not the last available version. Use the livearea to install
+    the last version of a game.
+
 ## 0.33
 
 What's new:

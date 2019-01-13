@@ -4,12 +4,13 @@ add_executable(pkgj_cli
   src/download.cpp
   src/extractzip.cpp
   src/filedownload.cpp
+  src/patchinfo.cpp
   src/simulator.cpp
-  src/aes128.c
+  src/aes128.cpp
   src/sfo.cpp
-  src/sha256.c
+  src/sha256.cpp
   src/filehttp.cpp
-  src/zrif.c
+  src/zrif.cpp
   src/puff.c
   src/cli.cpp
 )
