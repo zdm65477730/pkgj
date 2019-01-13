@@ -3,8 +3,6 @@
 extern "C"
 {
 #include "style.h"
-#include "utils.h"
-#include "zrif.h"
 }
 #include "comppackdb.hpp"
 #include "config.hpp"
@@ -17,7 +15,9 @@ extern "C"
 #include "install.hpp"
 #include "menu.hpp"
 #include "update.hpp"
+#include "utils.hpp"
 #include "vitahttp.hpp"
+#include "zrif.hpp"
 #include <imgui_internal.h>
 
 #include <vita2d.h>
@@ -29,6 +29,9 @@ extern "C"
 
 #include <cstddef>
 #include <cstring>
+
+#define PKGI_UPDATE_URL \
+    "https://api.github.com/repos/blastrock/pkgj/releases/latest"
 
 namespace
 {
@@ -80,6 +83,25 @@ const char* pkgi_get_ok_str(void)
 const char* pkgi_get_cancel_str(void)
 {
     return pkgi_cancel_button() == PKGI_BUTTON_O ? PKGI_UTF8_O : PKGI_UTF8_X;
+}
+
+Type mode_to_type(Mode mode)
+{
+    switch (mode)
+    {
+    case ModeGames:
+        return Game;
+    case ModeDlcs:
+        return Dlc;
+    case ModePsmGames:
+        return PsmGame;
+    case ModePsxGames:
+        return PsxGame;
+    case ModePspGames:
+        return PspGame;
+    }
+    throw formatEx<std::runtime_error>(
+            "未知模式 {}", static_cast<int>(mode));
 }
 
 void configure_db(TitleDatabase* db, const char* search, const Config* config)
@@ -161,7 +183,7 @@ void pkgi_refresh_thread(void)
             {
                 auto const http = std::make_unique<VitaHttp>();
                 comppack_db_games->update(
-                        http.get(), config.comppack_index_url + "entries.txt");
+                        http.get(), config.comppack_url + "entries.txt");
             }
             {
                 std::lock_guard<Mutex> lock(refresh_mutex);
@@ -173,7 +195,7 @@ void pkgi_refresh_thread(void)
             {
                 auto const http = std::make_unique<VitaHttp>();
                 comppack_db_updates->update(
-                        http.get(), config.comppack_index_url + "entries_patch.txt");
+                        http.get(), config.comppack_url + "entries_patch.txt");
             }
         }
         first_item = 0;
@@ -402,31 +424,31 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
             case ModeGames:
                 if (pkgi_is_installed(titleid))
                     item->presence = PresenceInstalled;
-                else if (downloader.is_in_queue(item->content))
+                else if (downloader.is_in_queue(Game, item->content))
                     item->presence = PresenceInstalling;
                 break;
             case ModePsmGames:
                 if (pkgi_psm_is_installed(titleid))
                     item->presence = PresenceInstalled;
-                else if (downloader.is_in_queue(item->content))
+                else if (downloader.is_in_queue(PsmGame, item->content))
                     item->presence = PresenceInstalling;
                 break;
             case ModePspGames:
                 if (pkgi_psp_is_installed(
                             pkgi_get_mode_partition(), item->content.c_str()))
                     item->presence = PresenceInstalled;
-                else if (downloader.is_in_queue(item->content))
+                else if (downloader.is_in_queue(PspGame, item->content))
                     item->presence = PresenceInstalling;
                 break;
             case ModePsxGames:
                 if (pkgi_psx_is_installed(
                             pkgi_get_mode_partition(), item->content.c_str()))
                     item->presence = PresenceInstalled;
-                else if (downloader.is_in_queue(item->content))
+                else if (downloader.is_in_queue(PsxGame, item->content))
                     item->presence = PresenceInstalling;
                 break;
             case ModeDlcs:
-                if (downloader.is_in_queue(item->content))
+                if (downloader.is_in_queue(Dlc, item->content))
                     item->presence = PresenceInstalling;
                 else if (pkgi_dlc_is_installed(item->content.c_str()))
                     item->presence = PresenceInstalled;
@@ -540,7 +562,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
 
     if (db_count == 0)
     {
-        const char* text = "無數據! 請嘗試刷新.";
+        const char* text = "無數據! 請嘗試刷新";
 
         int w = pkgi_text_width(text);
         pkgi_draw_text(
@@ -589,9 +611,9 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
                     comppack_db_updates->get(item->titleid));
         else
         {
-            if (downloader.is_in_queue(item->content))
+            if (downloader.is_in_queue(mode_to_type(mode), item->content))
             {
-                downloader.remove_from_queue(item->content);
+                downloader.remove_from_queue(mode_to_type(mode), item->content);
                 item->presence = PresenceUnknown;
             }
             else
@@ -639,7 +661,7 @@ void pkgi_do_head(void)
     const char* version = PKGI_VERSION;
 
     char title[256];
-    pkgi_snprintf(title, sizeof(title), "PKGj v%s汉化版%s", version,(config.custom_config)?"~自定义配置":" ");
+    pkgi_snprintf(title, sizeof(title), "PKGj v%s 中文版", version);
     pkgi_draw_text(0, 0, PKGI_COLOR_TEXT_HEAD, title);
 
     pkgi_draw_rect(
@@ -775,7 +797,7 @@ void pkgi_do_tail(Downloader& downloader)
                 static_cast<int>(download_offset * 100 / download_size));
     }
     else
-        pkgi_snprintf(text, sizeof(text), "暫無下載任務");
+        pkgi_snprintf(text, sizeof(text), "暫無下載");
 
     pkgi_draw_text(0, bottom_y, PKGI_COLOR_TEXT_TAIL, text);
 
@@ -833,7 +855,7 @@ void pkgi_do_tail(Downloader& downloader)
     else
     {
         if (mode == ModeGames)
-            bottom_text += fmt::format("{} 詳細信息 ", pkgi_get_ok_str());
+            bottom_text += fmt::format("{} 詳情 ", pkgi_get_ok_str());
         else
         {
             DbItem* item = db->get(selected_item);
@@ -942,7 +964,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
         pkgi_zrif_decode(item.zrif.c_str(), rif, message, sizeof(message)))
     {
         downloader.add(DownloadItem{
-                static_cast<Type>(mode),
+                mode_to_type(mode),
                 item.name,
                 item.content,
                 item.url,
@@ -955,7 +977,6 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
                         : std::vector<uint8_t>{},
                 !config.install_psp_as_pbp,
                 pkgi_get_mode_partition(),
-                false,
                 ""});
     }
     else
@@ -972,7 +993,7 @@ int main()
     {
         if (!pkgi_is_unsafe_mode())
             throw std::runtime_error(
-                    "PKGj 需要在 Henkaku 設置中啓用不安全自製"
+                    "PKGj需要在Henkaku設置中啓用不安全自製"
                     "軟件!");
 
         Downloader downloader;
@@ -1002,7 +1023,9 @@ int main()
 
         if (!config.no_version_check)
             start_update_thread();
-
+        if(config.firstopen.compare("100"))
+            pkgi_dialog_question(fmt::format("这是你首次打开PKGj中文版v1.00,欢迎使用。本软件源码基于blastrock@GitHub的PKGj v0.45。本软件遵循2-clause BSD授权，禁止用于商业用途本软件下载、使用完全免费，请勿从其他渠道购买。本软件由Anarch@PSVita破解吧翻译，5334032@PSVita破解吧修改编译。更多信息请访问相关wiki").c_str(),
+                {{"不再提示",[] {config.firstopen="100";pkgi_save_config(config);}},{"好", [] {}}});
         const auto imgui_context = ImGui::CreateContext();
         // Force enabling of navigation
         imgui_context->NavDisableHighlight = false;
@@ -1016,7 +1039,7 @@ int main()
                     20.0f,
                     0,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("無法加載 ltn0.pvf");
+            throw std::runtime_error("無法加載 cn0.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);
@@ -1041,15 +1064,15 @@ int main()
 
             if (gameview || pkgi_dialog_is_open())
             {
-                if (input.active & PKGI_BUTTON_UP)
+                if (input.pressed & PKGI_BUTTON_UP)
                     io.NavInputs[ImGuiNavInput_DpadUp] = 1.0f;
-                if (input.active & PKGI_BUTTON_DOWN)
+                if (input.pressed & PKGI_BUTTON_DOWN)
                     io.NavInputs[ImGuiNavInput_DpadDown] = 1.0f;
-                if (input.active & PKGI_BUTTON_LEFT)
+                if (input.pressed & PKGI_BUTTON_LEFT)
                     io.NavInputs[ImGuiNavInput_DpadLeft] = 1.0f;
-                if (input.active & PKGI_BUTTON_RIGHT)
+                if (input.pressed & PKGI_BUTTON_RIGHT)
                     io.NavInputs[ImGuiNavInput_DpadRight] = 1.0f;
-                if (input.active & pkgi_ok_button())
+                if (input.pressed & pkgi_ok_button())
                     io.NavInputs[ImGuiNavInput_Activate] = 1.0f;
                 input.active = 0;
                 input.pressed = 0;
