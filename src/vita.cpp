@@ -45,6 +45,11 @@ extern "C"
 #include <stdio.h>
 #include <string.h>
 
+extern "C"
+{
+    int _newlib_heap_size_user = 128 * 1024 * 1024;
+}
+
 static vita2d_pgf* g_font;
 
 static SceKernelLwMutexWork g_dialog_lock;
@@ -514,7 +519,6 @@ void pkgi_start(void)
     }
 
     vita2d_init_advanced(4 * 1024 * 1024);
-
     g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00001/font.pgf");
 
     g_time = sceKernelGetProcessTimeWide();
@@ -639,7 +643,11 @@ const char* pkgi_get_config_folder()
     CHECK_FOLDER("ur0:pkgi");
     CHECK_FOLDER("ux0:pkgi");
 #undef CHECK_FOLDER
-    else throw std::runtime_error("配置文件缺失");
+    else
+    {
+        pkgi_mkdirs("ux0:pkgj");
+        return "ux0:pkgj";
+    }
 }
 
 int pkgi_is_incomplete(const char* partition, const char* contentid)
@@ -656,7 +664,7 @@ void pkgi_delete_dir(const std::string& path)
 
     if (dfd < 0)
         throw formatEx<std::runtime_error>(
-                "打開失敗 ({}):\n{:#08x}",
+                "打開失敗({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(dfd));
 
@@ -686,7 +694,7 @@ void pkgi_delete_dir(const std::string& path)
             const auto ret = sceIoRemove(new_path.c_str());
             if (ret < 0)
                 throw formatEx<std::runtime_error>(
-                        "刪除失敗 ({}):\n{:#08x}",
+                        "刪除失敗({}):\n{:#08x}",
                         new_path,
                         static_cast<uint32_t>(ret));
         }
@@ -698,7 +706,7 @@ void pkgi_delete_dir(const std::string& path)
     res = sceIoRmdir(path.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "文件夾刪除失敗 ({}):\n{:#08x}",
+                文件夾刪除失敗({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(res));
 }
@@ -818,7 +826,7 @@ std::string pkgi_get_system_version()
         const auto res = _vshSblGetSystemSwVersion(&info);
         if (res < 0)
             throw std::runtime_error(fmt::format(
-                    "獲取系統軟件版本失敗: {:#08x}",
+                    "sceKernelGetSystemSwVersion failed: {:#08x}",
                     static_cast<uint32_t>(res)));
         return std::string(info.versionString);
     }();
