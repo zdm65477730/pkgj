@@ -161,7 +161,7 @@ void pkgi_refresh_thread(void)
             {
                 auto const http = std::make_unique<VitaHttp>();
                 comppack_db_games->update(
-                        http.get(), config.comppack_url + "entries.txt");
+                        http.get(), config.comppack_index_url + "entries.txt");
             }
             {
                 std::lock_guard<Mutex> lock(refresh_mutex);
@@ -173,7 +173,7 @@ void pkgi_refresh_thread(void)
             {
                 auto const http = std::make_unique<VitaHttp>();
                 comppack_db_updates->update(
-                        http.get(), config.comppack_url + "entries_patch.txt");
+                        http.get(), config.comppack_index_url + "entries_patch.txt");
             }
         }
         first_item = 0;
@@ -639,7 +639,7 @@ void pkgi_do_head(void)
     const char* version = PKGI_VERSION;
 
     char title[256];
-    pkgi_snprintf(title, sizeof(title), "PKGj v%s 繁體中文版", version);
+    pkgi_snprintf(title, sizeof(title), "PKGj v%s汉化版%s", version,(config.custom_config)?"~自定义配置":" ");
     pkgi_draw_text(0, 0, PKGI_COLOR_TEXT_HEAD, title);
 
     pkgi_draw_rect(

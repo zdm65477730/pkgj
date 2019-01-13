@@ -13,13 +13,13 @@ typedef struct Config
     int install_psp_as_pbp;
     std::string install_psp_psx_location;
     bool psm_readme_disclaimer;
-
+    int custom_config;
     std::string games_url;
     std::string dlcs_url;
     std::string psm_games_url;
     std::string psx_games_url;
     std::string psp_games_url;
-
+    std::string comppack_index_url;
     std::string comppack_url;
 } Config;
 

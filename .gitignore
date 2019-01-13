@@ -2,3 +2,4 @@
 /ci/build*
 .tags
 TODO
+.DS_Store

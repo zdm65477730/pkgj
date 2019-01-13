@@ -123,6 +123,7 @@ Config pkgi_load_config()
         config.filter = DbFilterAll;
         config.no_version_check = 0;
         config.install_psp_as_pbp = 0;
+        config.custom_config = 0;
         config.install_psp_psx_location = "ux0:";
 
         char path[256];
@@ -130,36 +131,36 @@ Config pkgi_load_config()
                 path, sizeof(path), "%s/config.txt", pkgi_get_config_folder());
         LOG("config location: %s", path);
 
-        auto data = pkgi_load(path);
-        data.push_back('\n');
+        auto data = pkgi_load(path);//获取配置文件数据（vector<char>类）
+        data.push_back('\n');//(在文件尾部增加一个\n防止分割出错)
 
         LOG("config.txt loaded, parsing");
-        auto text = reinterpret_cast<char*>(data.data());
-        const auto end = text + data.size();
+        auto text = reinterpret_cast<char*>(data.data());//强制类型转换获取字符串数组首地址
+        const auto end = text + data.size();//获取配置文件字符串尾指针判断是否读取到EOF
 
         while (text < end)
         {
-            const auto key = text;
+            const auto key = text;//保留字符串数组头指针（该字符串指向dict的key）
 
-            text = skipnonws(text, end);
+            text = skipnonws(text, end);//越过字符（获取一个key的长度）
             if (text == end)
                 break;
 
-            *text++ = 0;
+            *text++ = 0;//字符串指针后移一位并标记\0（用以后续strcmp时只对比一个关键词）
 
-            text = skipws(text, end);
+            text = skipws(text, end);//越过特殊字符(\n,\r,空格)并将指针指向新地址
             if (text == end)
                 break;
 
-            const auto value = text;
+            const auto value = text;//保留字符串数组头指针（该字符串指向dict的value）
 
-            text = skipnonws(text, end);
+            text = skipnonws(text, end);//越过字符（获取一个value的长度）
             if (text == end)
                 break;
 
-            *text++ = 0;
+            *text++ = 0;//字符串指针后移一位并标记\0（用以后续获取value值时的截断）
 
-            text = skipws(text, end);
+            text = skipws(text, end);//越过特殊字符，为下一次while循环做准备
 
             if (pkgi_stricmp(key, "url") == 0 ||
                 pkgi_stricmp(key, "url_games") == 0)
@@ -174,6 +175,8 @@ Config pkgi_load_config()
                 config.psp_games_url = value;
             else if (pkgi_stricmp(key, "url_comppack") == 0)
                 config.comppack_url = value;
+            else if (pkgi_stricmp(key, "url_comppack_index") == 0)
+                config.comppack_url = value;
             else if (pkgi_stricmp(key, "sort") == 0)
                 config.sort = parse_sort(value, SortByName);
             else if (pkgi_stricmp(key, "order") == 0)
@@ -186,18 +189,25 @@ Config pkgi_load_config()
                 config.install_psp_as_pbp = 1;
             else if (pkgi_stricmp(key, "install_psp_psx_location") == 0)
                 config.install_psp_psx_location = value;
+            else if (pkgi_stricmp(key, "custom_config") == 0)
+                config.custom_config = 1;
             else if (
                     pkgi_stricmp(key, "psm_disclaimer_yes_i_read_the_readme") ==
                     0)
                 config.psm_readme_disclaimer =
                         (pkgi_stricmp(value, "NoPsmDrm") == 0);
         }
-        if (config.games_url.empty()) config.games_url="http://47.100.37.250/tsv_files/PSV_GAMES_SC.tsv";
-        if (config.dlcs_url.empty()) config.dlcs_url="http://47.100.37.250/tsv_files/PSV_DLCS.tsv";
-        if (config.psm_games_url.empty()) config.psm_games_url="http://47.100.37.250/tsv_files/PSM_GAMES.tsv";
-        if (config.psx_games_url.empty()) config.psx_games_url="http://47.100.37.250/tsv_files/PSX_GAMES.tsv";
-        if (config.psp_games_url.empty()) config.psp_games_url="http://47.100.37.250/tsv_files/PSP_GAMES.tsv";
-        if (config.comppack_url.empty()) config.comppack_url="https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/";
+        if (config.custom_config==0){
+            config.games_url="http://47.100.37.250/tsv_files/PSV_GAMES_SC.tsv";
+            config.dlcs_url="http://47.100.37.250/tsv_files/PSV_DLCS.tsv";
+            config.psm_games_url="http://47.100.37.250/tsv_files/PSM_GAMES.tsv";
+            config.psx_games_url="http://47.100.37.250/tsv_files/PSX_GAMES.tsv";
+            config.psp_games_url="http://47.100.37.250/tsv_files/PSP_GAMES.tsv";
+            config.comppack_index_url="http://47.100.37.250/tsv_files/"
+            config.comppack_url="https://gitlab.com/nopaystation_repos/nps_compati_packs/raw/master/";
+        }
+        if ((!config.comppack_url.empty())&&config.comppack_index_url.empty())
+            config.comppack_index_url=config.comppack_url;
         return config;
     }
     catch (const std::exception& e)
@@ -277,6 +287,12 @@ void pkgi_save_config(const Config& config)
                 sizeof(data) - len,
                 "url_comppack %s\n",
                 config.comppack_url.c_str());
+    if (!config.comppack_index_url.empty())
+        len += pkgi_snprintf(
+                data + len,
+                sizeof(data) - len,
+                "url_comppack_index %s\n",
+                config.comppack_index_url.c_str());
     if (!config.install_psp_psx_location.empty())
         len += pkgi_snprintf(
                 data + len,
@@ -324,7 +340,11 @@ void pkgi_save_config(const Config& config)
         len += pkgi_snprintf(
                 data + len, sizeof(data) - len, "no_version_check 1\n");
     }
-
+    if (config.custom_config)
+    {
+        len += pkgi_snprintf(
+                data + len, sizeof(data) - len, "custom_config 1\n");
+    }
     if (config.install_psp_as_pbp)
     {
         len += pkgi_snprintf(
