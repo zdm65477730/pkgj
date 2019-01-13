@@ -146,7 +146,7 @@ Config pkgi_load_config()
         config.order = SortAscending;
         config.filter = DbFilterAll;
         config.install_psp_psx_location = "ux0:";
-        config.firstopen = “0”;
+        config.firstopen = "0";
 
         auto const path =
                 fmt::format("{}/config.txt", pkgi_get_config_folder());

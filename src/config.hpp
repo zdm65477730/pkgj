@@ -21,7 +21,7 @@ typedef struct Config
     std::string psp_games_url;
 
     std::string comppack_url;
-    int firstopen;
+    std::string firstopen;
 } Config;
 
 Config pkgi_load_config();
