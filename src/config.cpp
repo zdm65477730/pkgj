@@ -146,7 +146,7 @@ Config pkgi_load_config()
         config.order = SortAscending;
         config.filter = DbFilterAll;
         config.install_psp_psx_location = "ux0:";
-        config.firstopen = 0;
+        config.firstopen = “0”;
 
         auto const path =
                 fmt::format("{}/config.txt", pkgi_get_config_folder());
@@ -343,7 +343,7 @@ void pkgi_save_config(const Config& config)
         sep = ",";
     }
     len += pkgi_snprintf(data + len, sizeof(data) - len, "\n");
-
+    len += pkgi_snprintf(data + len, sizeof(data) - len, "last_version %s", config.last_version);
     if (config.no_version_check)
     {
         len += pkgi_snprintf(
