@@ -22,8 +22,8 @@ conan_basic_setup(TARGETS)
 set(CMAKE_CXX_STANDARD 17)
 
 set(VITA_APP_NAME "PKGj")
-set(VITA_TITLEID  "PKGJ00000")
-set(VITA_VERSION  "0.33")
+set(VITA_TITLEID  "PKGJ00001")
+set(VITA_VERSION  "1.00")
 
 option(PKGI_ENABLE_LOGGING "enables debug logging over udp multicast" OFF)
 
@@ -33,9 +33,7 @@ endif()
 
 add_definitions(-DPKGI_VERSION="${VITA_VERSION}" -D_GNU_SOURCE)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -flto")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -fvisibility=hidden")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto")
 
 if(HOST_BUILD)
   include(host.cmake)
