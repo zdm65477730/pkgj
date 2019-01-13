@@ -12,11 +12,13 @@
 enum Type
 {
     Game,
+    Patch,
     Dlc,
     PsmGame,
     PsxGame,
     PspGame,
-    CompPack,
+    CompPackBase,
+    CompPackPatch,
 };
 
 struct DownloadItem
@@ -30,7 +32,6 @@ struct DownloadItem
     bool save_as_iso;
     std::string partition;
     // only used by compatibility packs
-    bool is_patch;
     std::string version;
 };
 
@@ -48,8 +49,8 @@ public:
     ~Downloader();
 
     void add(const DownloadItem& d);
-    void remove_from_queue(const std::string& contentid);
-    bool is_in_queue(const std::string& titleid);
+    void remove_from_queue(Type type, const std::string& contentid);
+    bool is_in_queue(Type type, const std::string& titleid);
     std::optional<DownloadItem> get_current_download();
     std::tuple<uint64_t, uint64_t> get_current_download_progress();
 

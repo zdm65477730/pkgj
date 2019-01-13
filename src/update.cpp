@@ -57,8 +57,8 @@ void start_download()
 
         pkgi_dialog_message(
                 fmt::format(
-                        "新版本 PKGj 安裝文件已下載至 {}, 請通"
-                        "過 VitaShell 進行安裝.",
+                        "新版本PKGj安裝文件已下載至{}, 請使"
+                        "用VitaShell進行安裝",
                         filename)
                         .c_str());
     }
@@ -91,16 +91,16 @@ void update_thread()
 
             pkgi_dialog_question(
                     fmt::format(
-                            "PKGj 現已更新至 {} 版本!\n是否立即"
+                            "PKGj中文版現已更新至{}版本!\n是否立即"
                             "下載?",
                             last_version)
                             .c_str(),
-                    {{"是的",
+                    {{"立即下載",
                       [] {
                           pkgi_start_thread(
                                   "pkgj_update_download", &start_download);
                       }},
-                     {"稍後", [] {}}});
+                     {"以後再説", [] {}}});
         }
     }
     catch (const std::exception& e)

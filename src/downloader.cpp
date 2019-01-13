@@ -15,19 +15,23 @@ std::string type_to_string(Type type)
     switch (type)
     {
     case Type::Game:
-        return "PSV 游戲";
+        return "PSV游戲";
+    case Type::Patch:
+        return "PSV遊戲更新";
     case Type::Dlc:
-        return "PSV 追加下載内容";
+        return "PSV追加下載内容";
     case Type::PsmGame:
-        return "PSM 游戲";
+        return "PSM游戲";
     case Type::PsxGame:
-        return "PSX 游戲";
+        return "PSX游戲";
     case Type::PspGame:
-        return "PSP 游戲";
-    case Type::CompPack:
-        return "兼容包";
+        return "PSP游戲";
+    case Type::CompPackBase:
+        return "遊戲本體兼容包";
+    case Type::CompPackPatch:
+        return "遊戲更新兼容包";
     }
-    return "unknown";
+    return "未知";
 }
 
 Downloader::Downloader()
@@ -55,14 +59,15 @@ void Downloader::add(const DownloadItem& d)
     _cond.notify_one();
 }
 
-bool Downloader::is_in_queue(const std::string& contentid)
+bool Downloader::is_in_queue(Type type, const std::string& contentid)
 {
     ScopeLock _(_cond.get_mutex());
-    if (contentid == _current_download.content)
+    if (type == _current_download.type &&
+        contentid == _current_download.content)
         return true;
 
     for (const auto& item : _queue)
-        if (item.content == contentid)
+        if (item.type == type && item.content == contentid)
             return true;
     return false;
 }
@@ -80,10 +85,11 @@ std::tuple<uint64_t, uint64_t> Downloader::get_current_download_progress()
     return {_download_offset.load(), _download_size.load()};
 }
 
-void Downloader::remove_from_queue(const std::string& contentid)
+void Downloader::remove_from_queue(Type type, const std::string& contentid)
 {
     ScopeLock _(_cond.get_mutex());
-    if (contentid == _current_download.content)
+    if (type == _current_download.type &&
+        contentid == _current_download.content)
         _cancel_current = true;
     else
         _queue.erase(
@@ -91,7 +97,8 @@ void Downloader::remove_from_queue(const std::string& contentid)
                         _queue.begin(),
                         _queue.end(),
                         [&](auto const& item) {
-                            return item.content == contentid;
+                            return item.type == type &&
+                                   item.content == contentid;
                         }),
                 _queue.end());
 }
@@ -165,6 +172,9 @@ void Downloader::do_download_package(const DownloadItem& item)
     case Dlc:
         pkgi_install(item.content.c_str());
         break;
+    case Patch:
+        pkgi_install_update(item.content.c_str());
+        break;
     case PspGame:
         if (item.save_as_iso)
             pkgi_install_pspgame_as_iso(
@@ -178,7 +188,8 @@ void Downloader::do_download_package(const DownloadItem& item)
     case PsxGame:
         pkgi_install_pspgame(item.partition.c_str(), item.content.c_str());
         break;
-    case CompPack:
+    case CompPackBase:
+    case CompPackPatch:
         throw std::runtime_error(
                 "聲明錯誤: 無法處理兼容包的壓縮文件");
     }
@@ -210,7 +221,8 @@ void Downloader::do_download_comppack(const DownloadItem& item)
     download->download(
             item.partition.c_str(), item.content.c_str(), item.url.c_str());
     LOGF("download of comppack {} completed!", item.url);
-    pkgi_install_comppack(item.content, item.is_patch, item.version);
+    pkgi_install_comppack(
+            item.content, item.type == CompPackPatch, item.version);
     pkgi_rm(fmt::format("{}pkgj/{}-comp.ppk", item.partition, item.content)
                     .c_str());
     LOG("install of %s completed!", item.name.c_str());
@@ -218,7 +230,7 @@ void Downloader::do_download_comppack(const DownloadItem& item)
 
 void Downloader::do_download(const DownloadItem& item)
 {
-    if (item.type == CompPack)
+    if (item.type == CompPackBase || item.type == CompPackPatch)
         do_download_comppack(item);
     else
         do_download_package(item);

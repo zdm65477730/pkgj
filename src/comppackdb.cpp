@@ -1,11 +1,8 @@
 #include "comppackdb.hpp"
 
-extern "C" {
-#include "sha256.h"
-#include "utils.h"
-}
 #include "pkgi.hpp"
 #include "sqlite.hpp"
+#include "utils.hpp"
 
 #include <fmt/format.h>
 
@@ -56,13 +53,16 @@ void CompPackDatabase::reopen()
                 "drop table failed");
     }
 
-    SQLITE_EXEC(_sqliteDb, R"(
+    SQLITE_EXEC(
+            _sqliteDb,
+            R"(
         CREATE TABLE IF NOT EXISTS entries (
             titleid TEXT NOT NULL,
             app_version TEXT NOT NULL,
             path TEXT NOT NULL,
             PRIMARY KEY (titleid, app_version)
-        ))", "can't create comp pack table");
+        ))",
+            "can't create comp pack table");
 }
 
 namespace
@@ -169,7 +169,7 @@ void CompPackDatabase::parse_entries(std::string& db_data)
             auto err = sqlite3_step(stmt);
             if (err != SQLITE_DONE)
                 throw std::runtime_error(fmt::format(
-                        "無法執行 SQL 語句:\n{}",
+                        "無法執行SQL語句:\n{}",
                         sqlite3_errmsg(_sqliteDb.get())));
         }
         catch (const std::exception& e)
@@ -197,7 +197,7 @@ void CompPackDatabase::update(Http* http, const std::string& update_url)
 
     if (length > (int64_t)db_data.size())
         throw std::runtime_error(
-                "兼容包列表過大... 請更新 PKGj 版本");
+                "兼容包列表過大... 請更新PKGj版本");
 
     for (;;)
     {
@@ -211,7 +211,7 @@ void CompPackDatabase::update(Http* http, const std::string& update_url)
 
     if (db_size == 0)
         throw std::runtime_error(
-                "兼容包列表為空... 請更新 PKGj 版本");
+                "兼容包列表為空... 請更新PKGj版本");
 
     LOG("parsing items");
 
@@ -253,7 +253,7 @@ std::optional<CompPackDatabase::Item> CompPackDatabase::get(
         return std::nullopt;
     if (err != SQLITE_ROW)
         throw std::runtime_error(fmt::format(
-                "無法執行 SQL 語句:\n{}",
+                "無法執行SQL語句:\n{}",
                 sqlite3_errmsg(_sqliteDb.get())));
 
     std::string app_version =

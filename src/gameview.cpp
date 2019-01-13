@@ -15,6 +15,22 @@ constexpr unsigned GameViewWidth = VITA_WIDTH * 0.8;
 constexpr unsigned GameViewHeight = VITA_HEIGHT * 0.8;
 }
 
+GameView::GameView(
+        const Config* config,
+        Downloader* downloader,
+        DbItem* item,
+        std::optional<CompPackDatabase::Item> base_comppack,
+        std::optional<CompPackDatabase::Item> patch_comppack)
+    : _config(config)
+    , _downloader(downloader)
+    , _item(item)
+    , _base_comppack(base_comppack)
+    , _patch_comppack(patch_comppack)
+    , _patch_info_fetcher(item->titleid)
+{
+    refresh();
+}
+
 void GameView::render()
 {
     ImGui::SetNextWindowPos(
@@ -36,10 +52,13 @@ void GameView::render()
     ImGui::PushTextWrapPos(0.f);
     ImGui::Text(fmt::format("當前系統固件版本: {}", pkgi_get_system_version())
                         .c_str());
-    ImGui::Text(fmt::format("運行所需固件版本: {}", _item->fw_version)
-                        .c_str());
+    ImGui::Text(
+            fmt::format(
+                    "運行所需固件版本: {}", get_min_system_version())
+                    .c_str());
 
     ImGui::Text(" ");
+    ImGui::Text("友情提示:ReF00d已经发布,建议使用其代替兼容包");
 
     ImGui::Text(fmt::format(
                         "游戲安裝及版本更新情況: {}",
@@ -72,7 +91,7 @@ void GameView::render()
 
     ImGui::PopTextWrapPos();
 
-    if (!_downloader->is_in_queue(_item->content))
+    if (!_downloader->is_in_queue(Game, _item->content))
     {
         if (ImGui::Button("安裝游戲本體###installgame"))
             start_download_package();
@@ -83,20 +102,70 @@ void GameView::render()
             cancel_download_package();
     }
 
-    if (_base_comppack)
-        if (ImGui::Button("安裝游戲本體兼容包"))
-            start_download_comppack(false);
-    if (_patch_comppack)
-        if (ImGui::Button(fmt::format(
-                                  "安裝游戲更新兼容包 {}",
-                                  _patch_comppack->app_version)
-                                  .c_str()))
-            start_download_comppack(true);
+    switch (_patch_info_fetcher.get_status())
+    {
+    case PatchInfoFetcher::Status::Fetching:
+        ImGui::Button("正在查找遊戲更新...###installpatch");
+        break;
+    case PatchInfoFetcher::Status::NoUpdate:
+        ImGui::Button("未查找到遊戲更新###installpatch");
+        break;
+    case PatchInfoFetcher::Status::Found:
+    {
+        const auto patch_info = _patch_info_fetcher.get_patch_info();
+        if (!_downloader->is_in_queue(Patch, _item->titleid))
+        {
+            if (ImGui::Button(fmt::format(
+                                      "安裝遊戲更新 {}###installpatch",
+                                      patch_info->version)
+                                      .c_str()))
+                start_download_patch(*patch_info);
+        }
+        else
+        {
+            if (ImGui::Button("取消安裝遊戲更新###installpatch"))
+                cancel_download_patch();
+        }
+        break;
+    }
+    case PatchInfoFetcher::Status::Error:
+        ImGui::Button("無法獲取遊戲更新信息###installpatch");
+        break;
+    }
 
-    // HACK: comppack are identified by their titleid instead of content id
-    if (_downloader->is_in_queue(_item->titleid))
-        if (ImGui::Button("取消安裝游戲兼容包"))
-            cancel_download_comppacks();
+    if (_base_comppack)
+    {
+        if (!_downloader->is_in_queue(CompPackBase, _item->titleid))
+        {
+            if (ImGui::Button("安裝遊戲本體兼容"
+                              "包###installbasecomppack"))
+                start_download_comppack(false);
+        }
+        else
+        {
+            if (ImGui::Button("取消安裝遊戲本體兼容"
+                              "包###installbasecomppack"))
+                cancel_download_comppacks(false);
+        }
+    }
+    if (_patch_comppack)
+    {
+        if (!_downloader->is_in_queue(CompPackPatch, _item->titleid))
+        {
+            if (ImGui::Button(fmt::format(
+                                      "安裝遊戲更新兼容包 "
+                                      "{}###installpatchcommppack",
+                                      _patch_comppack->app_version)
+                                      .c_str()))
+                start_download_comppack(true);
+        }
+        else
+        {
+            if (ImGui::Button("取消安裝遊戲更新兼容"
+                              "包###installpatchcommppack"))
+                cancel_download_comppacks(true);
+        }
+    }
 
     if (ImGui::Button("關閉"))
         _closed = true;
@@ -117,7 +186,7 @@ void GameView::printDiagnostic()
     };
 
     auto const systemVersion = pkgi_get_system_version();
-    auto const& minSystemVersion = _item->fw_version;
+    auto const minSystemVersion = get_min_system_version();
 
     ImGui::Text("運行診斷:");
 
@@ -140,8 +209,8 @@ void GameView::printDiagnostic()
     {
         ImGui::TextColored(
                 Yellow,
-                "- 游戲兼容包已安裝,但并非通過 PKGj 進行安裝, 請"
-                "確保該兼容包與游戲版本相匹配, 如出現運行異常, 請通過 PKGj "
+                "- 游戲兼容包已安裝,但并非通過PKGj進行安裝, 請"
+                "確保該兼容包與游戲版本相匹配, 如出現運行異常, 請通過PKGj"
                 "重新安裝");
         ok = false;
     }
@@ -182,6 +251,15 @@ void GameView::printDiagnostic()
         ImGui::TextColored(Green, "已滿足運行條件");
 }
 
+std::string GameView::get_min_system_version()
+{
+    auto const patchInfo = _patch_info_fetcher.get_patch_info();
+    if (patchInfo)
+        return patchInfo->fw_version;
+    else
+        return _item->fw_version;
+}
+
 void GameView::refresh()
 {
     LOGF("refreshing gameview");
@@ -205,15 +283,34 @@ void GameView::start_download_package()
 
 void GameView::cancel_download_package()
 {
-    _downloader->remove_from_queue(_item->content);
+    _downloader->remove_from_queue(Game, _item->content);
     _item->presence = PresenceUnknown;
+}
+
+void GameView::start_download_patch(const PatchInfo& patch_info)
+{
+    _downloader->add(DownloadItem{Patch,
+                                  _item->name,
+                                  _item->titleid,
+                                  patch_info.url,
+                                  std::vector<uint8_t>{},
+                                  // TODO sha1 check
+                                  std::vector<uint8_t>{},
+                                  false,
+                                  "ux0:",
+                                  ""});
+}
+
+void GameView::cancel_download_patch()
+{
+    _downloader->remove_from_queue(Patch, _item->titleid);
 }
 
 void GameView::start_download_comppack(bool patch)
 {
     const auto& entry = patch ? _patch_comppack : _base_comppack;
 
-    _downloader->add(DownloadItem{CompPack,
+    _downloader->add(DownloadItem{patch ? CompPackPatch : CompPackBase,
                                   _item->name,
                                   _item->titleid,
                                   _config->comppack_url + entry->path,
@@ -221,12 +318,11 @@ void GameView::start_download_comppack(bool patch)
                                   std::vector<uint8_t>{},
                                   false,
                                   "ux0:",
-                                  patch,
                                   entry->app_version});
 }
 
-void GameView::cancel_download_comppacks()
+void GameView::cancel_download_comppacks(bool patch)
 {
-    // HACK: comppack are identified by their titleid instead of content id
-    _downloader->remove_from_queue(_item->titleid);
+    _downloader->remove_from_queue(
+            patch ? CompPackPatch : CompPackBase, _item->titleid);
 }

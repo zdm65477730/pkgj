@@ -3,7 +3,6 @@
 extern "C"
 {
 #include "style.h"
-#include "utils.h"
 }
 #include "pkgi.hpp"
 
@@ -166,7 +165,7 @@ void pkgi_do_dialog()
     {
         ImGui::Separator();
         if (ImGui::Button(
-                    "好的",
+                    "確定",
                     ImVec2{ImGui::GetWindowContentRegionWidth(),
                            ImGui::GetTextLineHeightWithSpacing()}))
         {

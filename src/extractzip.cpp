@@ -48,7 +48,7 @@ void pkgi_extract_zip(const std::string& zip_file, const std::string& dest)
             const auto comp_fd = zip_fopen_index(zip_fd, i, 0);
             if (!comp_fd)
                 throw formatEx<std::runtime_error>(
-                        "無法打開壓縮包索引 {} of {}:\n{}",
+                        "無法打開{}壓縮包的索引{}:\n{}",
                         i,
                         zip_file,
                         zip_strerror(zip_fd));

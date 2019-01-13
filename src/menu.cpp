@@ -52,15 +52,15 @@ static const MenuEntry menu_entries[] = {
         {MenuFilter, "歐洲", DbFilterRegionEUR},
         {MenuFilter, "日本", DbFilterRegionJPN},
         {MenuFilter, "美國", DbFilterRegionUSA},
-        {MenuFilter, "已安裝游戲", DbFilterInstalled},
+        {MenuFilter, "已安裝的游戲", DbFilterInstalled},
 
         {MenuRefresh, "刷新", 0},
 
-        {MenuShow, "顯示 PSV 游戲", 1},
-        {MenuShow, "顯示 PSV 追加下載内容", 2},
-        {MenuShow, "顯示 PSX 游戲", 4},
-        {MenuShow, "顯示 PSP 游戲", 8},
-        {MenuShow, "顯示 PSM 游戲", 16},
+        {MenuShow, "顯示PSV游戲", 1},
+        {MenuShow, "顯示PSV追加下載内容", 2},
+        {MenuShow, "顯示PSX游戲", 4},
+        {MenuShow, "顯示PSP游戲", 8},
+        {MenuShow, "顯示PSM游戲", 16},
 };
 
 int pkgi_menu_is_open(void)

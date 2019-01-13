@@ -1,12 +1,9 @@
 #include "filedownload.hpp"
 #include "download.hpp"
 
-extern "C"
-{
-#include "utils.h"
-}
 #include "file.hpp"
 #include "pkgi.hpp"
+#include "utils.hpp"
 
 #include <fmt/format.h>
 
@@ -34,7 +31,7 @@ void FileDownload::start_download()
 
     const auto http_length = _http->get_length();
     if (http_length < 0)
-        throw DownloadError("HTTP 響應的長度未知");
+        throw DownloadError("HTTP響應的長度未知");
 
     download_size = http_length;
     LOGF("http response length = {}", download_size);
@@ -57,7 +54,7 @@ void FileDownload::download_data(uint32_t size)
         {
             const int read = _http->read(buffer.data() + pos, size - pos);
             if (read == 0)
-                throw DownloadError("HTTP 連接已斷開");
+                throw DownloadError("HTTP連接已斷開");
             pos += read;
         }
     }

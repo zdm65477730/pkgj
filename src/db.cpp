@@ -1,12 +1,9 @@
 #include "db.hpp"
 
-extern "C"
-{
-#include "sha256.h"
-#include "utils.h"
-}
 #include "file.hpp"
 #include "pkgi.hpp"
+#include "sha256.hpp"
+#include "utils.hpp"
 
 #include <fmt/format.h>
 
@@ -39,41 +36,6 @@ std::string pkgi_mode_to_string(Mode mode)
 
 TitleDatabase::TitleDatabase(const std::string& dbPath) : _dbPath(dbPath)
 {
-}
-
-static uint8_t hexvalue(char ch)
-{
-    if (ch >= '0' && ch <= '9')
-    {
-        return ch - '0';
-    }
-    else if (ch >= 'a' && ch <= 'f')
-    {
-        return ch - 'a' + 10;
-    }
-    else if (ch >= 'A' && ch <= 'F')
-    {
-        return ch - 'A' + 10;
-    }
-    return 0;
-}
-
-static std::array<uint8_t, 32> pkgi_hexbytes(
-        const char* digest, uint32_t length)
-{
-    std::array<uint8_t, 32> result;
-
-    for (uint32_t i = 0; i < length; i++)
-    {
-        char ch1 = digest[2 * i];
-        char ch2 = digest[2 * i + 1];
-        if (ch1 == 0 || ch2 == 0)
-            return result;
-
-        result[i] = hexvalue(ch1) * 16 + hexvalue(ch2);
-    }
-
-    return result;
 }
 
 static const char* pkgi_mode_to_file_name(Mode mode)
@@ -282,7 +244,7 @@ void TitleDatabase::update(Mode mode, Http* http, const std::string& update_url)
 
     if (db_size == 0)
         throw std::runtime_error(
-                "列表為空...請更新 PKGj 版本");
+                "列表為空...請更新PKGj版本");
 
     pkgi_close(item_file);
     item_file = nullptr;

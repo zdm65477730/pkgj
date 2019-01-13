@@ -29,7 +29,9 @@ public:
 
     virtual void start(const std::string& url, uint64_t offset) = 0;
     virtual int64_t read(uint8_t* buffer, uint64_t size) = 0;
+    virtual void abort() = 0;
 
+    virtual int get_status() = 0;
     virtual int64_t get_length() = 0;
 
     virtual explicit operator bool() const = 0;

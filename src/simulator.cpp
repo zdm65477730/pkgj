@@ -129,7 +129,7 @@ void pkgi_mkdirs(const char* ppath)
         int err = mkdir(path.c_str(), 0777);
         if (err < 0 && errno != EEXIST)
             throw std::runtime_error(fmt::format(
-                    "新建文件夾 ({}) 失敗: {:#08x}",
+                    "新建文件夾({})失敗: {:#08x}",
                     path.c_str(),
                     static_cast<uint32_t>(err)));
         *ptr = last;
@@ -150,7 +150,7 @@ void pkgi_delete_dir(const std::string& path)
 
     if (!dfd)
         throw formatEx<std::runtime_error>(
-                "無法打開 ({}): {}", path, strerror(errno));
+                "無法打開({}): {}", path, strerror(errno));
 
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -178,7 +178,7 @@ void pkgi_delete_dir(const std::string& path)
             const auto ret = unlink(new_path.c_str());
             if (ret < 0)
                 throw formatEx<std::runtime_error>(
-                        "取消鏈接失敗 ({}): {}", new_path, strerror(errno));
+                        "取消鏈接失敗({}): {}", new_path, strerror(errno));
         }
     }
 
@@ -188,7 +188,7 @@ void pkgi_delete_dir(const std::string& path)
     res = rmdir(path.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "無法移動文件夾 ({}): {}", path, strerror(errno));
+                "無法移動文件夾({}): {}", path, strerror(errno));
 }
 
 std::vector<uint8_t> pkgi_load(const std::string& path)
@@ -196,7 +196,7 @@ std::vector<uint8_t> pkgi_load(const std::string& path)
     int fd = open(path.c_str(), O_RDONLY);
     if (fd < 0)
         throw std::runtime_error(fmt::format(
-                "打開 ({}) 失敗: {:#08x}", path, static_cast<uint32_t>(fd)));
+                "打開({})失敗: {:#08x}", path, static_cast<uint32_t>(fd)));
 
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -211,7 +211,7 @@ std::vector<uint8_t> pkgi_load(const std::string& path)
     const auto readsize = read(fd, data.data(), data.size());
     if (readsize < 0)
         throw std::runtime_error(fmt::format(
-                "讀取 ({}) 失敗: {:#08x}",
+                "讀取({})失敗: {:#08x}",
                 path.c_str(),
                 static_cast<uint32_t>(readsize)));
 
@@ -278,7 +278,7 @@ void pkgi_save(const std::string& path, const void* data, uint32_t size)
     int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
         throw std::runtime_error(fmt::format(
-                "打開 ({}) 失敗:\n{:#08x}", path, static_cast<uint32_t>(fd)));
+                "打開({})失敗:\n{:#08x}", path, static_cast<uint32_t>(fd)));
 
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -291,7 +291,7 @@ void pkgi_save(const std::string& path, const void* data, uint32_t size)
         int written = write(fd, data8, size);
         if (written <= 0)
             throw std::runtime_error(fmt::format(
-                    "寫入 ({}) 失敗:\n{:#08x}",
+                    "寫入({})失敗:\n{:#08x}",
                     path,
                     static_cast<uint32_t>(written)));
         data8 += written;
@@ -304,7 +304,7 @@ void* pkgi_create(const std::string& path)
     LOGF("pkgi_create {}", path);
     int fd = open(path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd < 0)
-        throw std::runtime_error("PKGi 創建失敗");
+        throw std::runtime_error("PKGi創建失敗");
 
     return (void*)(intptr_t)fd;
 }

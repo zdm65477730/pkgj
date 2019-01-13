@@ -40,7 +40,7 @@ VitaHttp::~VitaHttp()
 void VitaHttp::start(const std::string& url, uint64_t offset)
 {
     if (_http)
-        throw HttpError("HTTP 連接已啓動");
+        throw HttpError("HTTP連接已啓動");
 
     LOG("http get");
 
@@ -106,7 +106,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
         if ((err = sceHttpAddRequestHeader(
                      req, "Range", range, SCE_HTTP_HEADER_ADD)) < 0)
             throw HttpError(fmt::format(
-                    "添加請求文件頭失敗: {:#08x}",
+                    "添加請求文件頭失: {:#08x}",
                     static_cast<uint32_t>(err)));
     }
 
@@ -115,8 +115,8 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
                 "發送請求失敗: {:#08x}\n{}",
                 static_cast<uint32_t>(err),
                 static_cast<uint32_t>(err) == 0x80431075
-                        ? "PSVita 無法支持 HTTPS 链接"
-                          ".\n請更換 HTTP 鏈接."
+                        ? "PSVita無法支持HTTPS鏈接"
+                          "\n請更換HTTP鏈接"
                         : "");
 
     http->used = 1;
@@ -130,28 +130,28 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
 
 int64_t VitaHttp::read(uint8_t* buffer, uint64_t size)
 {
+    check_status();
+
     int read = sceHttpReadData(_http->req, buffer, size);
     if (read < 0)
         throw HttpError(fmt::format(
-                "下載錯誤 {:#08x}",
+                "下載錯誤{:#08x}",
                 static_cast<uint32_t>(static_cast<int32_t>(read))));
     return read;
 }
 
+void VitaHttp::abort()
+{
+    const auto err = sceHttpAbortRequest(_http->req);
+    if (err)
+        LOGF("abort() failed: {:#08x}", static_cast<uint32_t>(err));
+}
+
 int64_t VitaHttp::get_length()
 {
+    check_status();
+
     int res;
-    int status;
-    if ((res = sceHttpGetStatusCode(_http->req, &status)) < 0)
-        throw HttpError(fmt::format(
-                "獲取狀態代碼失敗: {:#08x}",
-                static_cast<uint32_t>(res)));
-
-    LOGF("http status code = {}", status);
-
-    if (status != 200 && status != 206)
-        throw HttpError(fmt::format("錯誤的 HTTP 狀態: {}", status));
-
     uint64_t content_length;
     res = sceHttpGetResponseContentLength(_http->req, &content_length);
     if (res < 0)
@@ -168,6 +168,32 @@ int64_t VitaHttp::get_length()
 
     LOGF("http response length = {}", content_length);
     return content_length;
+}
+
+int VitaHttp::get_status()
+{
+    int res;
+    int status;
+    if ((res = sceHttpGetStatusCode(_http->req, &status)) < 0)
+        throw HttpError(fmt::format(
+                "獲取狀態代碼失敗: {:#08x}",
+                static_cast<uint32_t>(res)));
+
+    return status;
+}
+
+void VitaHttp::check_status()
+{
+    if (_status_checked)
+        return;
+    _status_checked = true;
+
+    const auto status = get_status();
+
+    LOGF("http status code = {}", status);
+
+    if (status != 200 && status != 206)
+        throw HttpError(fmt::format("HTTP狀態異常: {}", status));
 }
 
 VitaHttp::operator bool() const
