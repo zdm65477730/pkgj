@@ -58,7 +58,7 @@ void GameView::render()
                     .c_str());
 
     ImGui::Text(" ");
-    ImGui::Text("友情提示:ReF00d已经发布,建议使用其代替兼容包");
+    ImGui::Text("- 溫馨提示: reF00D已發佈, 建議使用該插件替代兼容包!");
 
     ImGui::Text(fmt::format(
                         "游戲安裝及版本更新情況: {}",

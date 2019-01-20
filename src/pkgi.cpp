@@ -1023,9 +1023,9 @@ int main()
 
         if (!config.no_version_check)
             start_update_thread();
-        if(config.firstopen.compare("100"))
-            pkgi_dialog_question(fmt::format("这是你首次打开PKGj中文版v1.00,欢迎使用。本软件源码基于blastrock@GitHub的PKGj v0.45。本软件遵循2-clause BSD授权，禁止用于商业用途本软件下载、使用完全免费，请勿从其他渠道购买。本软件由Anarch@PSVita破解吧翻译，5334032@PSVita破解吧修改编译。更多信息请访问相关wiki").c_str(),
-                {{"不再提示",[] {config.firstopen="100";pkgi_save_config(config);}},{"好", [] {}}});
+        if(config.firstopen.compare("101")<0)
+            pkgi_dialog_question(fmt::format("這是您首次運行PKGj中文版v1.00, 感謝使用！源碼基於blastrock@GitHub的PKGj v0.45，遵循2-clause BSD授權，禁止用於任何形式的商業用途！下載及使用完全免費，請勿從其他渠道購買！由Anarch13@PSVita破解吧翻譯，5334032@PSVita破解吧修改編譯製作，更多信息敬請訪問PKGj中文版官方wiki").c_str(),
+                {{"不再提示",[] {config.firstopen="101";pkgi_save_config(config);}},{"確定", [] {}}});
         const auto imgui_context = ImGui::CreateContext();
         // Force enabling of navigation
         imgui_context->NavDisableHighlight = false;
@@ -1207,6 +1207,9 @@ int main()
                         break;
                     case MenuResultShowPspGames:
                         pkgi_set_mode(ModePspGames);
+                        break;
+                    case MenuAbout:
+                            pkgi_dialog_question(fmt::format("關於\nPKGj中文版v1.00,基於blastrock@GitHub PKGj v0.46，由5334032,Anarch13(百度貼吧-PSVita破解吧)修改漢化。遵循2-clause BSD授權，禁止用於任何形式的商業用途！\n生效中的配置信息:\nPSV游戲:{}\nPSV追加下載内容:{}\nPSP游戲:{}\nPSX游戲:{}\nPSM游戲:{}\n兼容包:{}\n自動更新:{} ",config.games_url,config.dlcs_url,config.psp_games_url,config.psx_games_url,config.psm_games_url,config.comppack_url,config.no_version_check?"禁用":"啓用").c_str(),{{"確定", [] {}},{"重置Config.txt",[] {config=pkgi_set_default_config();pkgi_save_config(config);}},{fmt::format("{}自动更新",config.no_version_check?"啓用":"禁用").c_str(),[] {config.no_version_check=!config.no_version_check;pkgi_save_config(config);}}});
                         break;
                     }
                 }

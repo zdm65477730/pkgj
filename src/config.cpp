@@ -129,6 +129,22 @@ static DbFilter parse_filter(char* value, uint32_t filter)
 
     return static_cast<DbFilter>(result);
 }
+Config pkgi_set_default_config()
+{
+    Config config;
+    config.games_url = default_psv_games_url;
+    config.dlcs_url = default_psv_dlcs_url;
+    config.psm_games_url = default_psm_games_url;
+    config.psx_games_url = default_psx_games_url;
+    config.psp_games_url = default_psp_games_url;
+    config.comppack_url = default_comppack_url;
+    config.sort = SortByName;
+    config.order = SortAscending;
+    config.filter = DbFilterAll;
+    config.install_psp_psx_location = "ux0:";
+    config.firstopen = "0";
+    return config;
+}
 
 Config pkgi_load_config()
 {
@@ -343,7 +359,7 @@ void pkgi_save_config(const Config& config)
         sep = ",";
     }
     len += pkgi_snprintf(data + len, sizeof(data) - len, "\n");
-    len += pkgi_snprintf(data + len, sizeof(data) - len, "last_version %s", config.last_version);
+    len += pkgi_snprintf(data + len, sizeof(data) - len, "last_version %s", config.firstopen);
     if (config.no_version_check)
     {
         len += pkgi_snprintf(

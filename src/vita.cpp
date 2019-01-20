@@ -706,7 +706,7 @@ void pkgi_delete_dir(const std::string& path)
     res = sceIoRmdir(path.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                文件夾刪除失敗({}):\n{:#08x}",
+                "文件夾刪除失敗({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(res));
 }
@@ -826,7 +826,7 @@ std::string pkgi_get_system_version()
         const auto res = _vshSblGetSystemSwVersion(&info);
         if (res < 0)
             throw std::runtime_error(fmt::format(
-                    "sceKernelGetSystemSwVersion failed: {:#08x}",
+                    "獲取系統軟件版本失敗: {:#08x}",
                     static_cast<uint32_t>(res)));
         return std::string(info.versionString);
     }();

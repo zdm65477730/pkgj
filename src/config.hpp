@@ -23,6 +23,6 @@ typedef struct Config
     std::string comppack_url;
     std::string firstopen;
 } Config;
-
+Config pkgi_set_default_config();
 Config pkgi_load_config();
 void pkgi_save_config(const Config& config);

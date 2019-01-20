@@ -16,6 +16,7 @@ typedef enum
     MenuResultShowPsxGames,
     MenuResultShowPspGames,
     MenuResultShowPsmGames,
+    MenuAbout,
 } MenuResult;
 
 typedef struct Config Config;

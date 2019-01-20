@@ -27,6 +27,7 @@ typedef enum
     MenuFilter,
     MenuRefresh,
     MenuShow,
+    MenuButton,
 } MenuType;
 
 typedef struct
@@ -61,6 +62,8 @@ static const MenuEntry menu_entries[] = {
         {MenuShow, "顯示PSX游戲", 4},
         {MenuShow, "顯示PSP游戲", 8},
         {MenuShow, "顯示PSM游戲", 16},
+
+        {MenuButton, "关于", 0},
 };
 
 int pkgi_menu_is_open(void)
@@ -150,10 +153,8 @@ int pkgi_do_menu(pkgi_input* input)
                 menu_selected++;
             }
         } while (menu_entries[menu_selected].type == MenuText ||
-                 (menu_entries[menu_selected].type == MenuSearchClear &&
-                  !menu_search_clear) ||
-                 (menu_entries[menu_selected].type == MenuShow &&
-                  !(menu_entries[menu_selected].value & menu_allow_refresh)));
+                 (menu_entries[menu_selected].type == MenuSearchClear && !menu_search_clear) ||
+                 (menu_entries[menu_selected].type == MenuShow && !(menu_entries[menu_selected].value & menu_allow_refresh)));
     }
 
     if (input->pressed & pkgi_cancel_button())
@@ -187,6 +188,12 @@ int pkgi_do_menu(pkgi_input* input)
         else if (type == MenuRefresh)
         {
             menu_result = MenuResultRefresh;
+            menu_delta = -1;
+            return 1;
+        }
+        else if (type == MenuButton)
+        {
+            menu_result = MenuAbout;
             menu_delta = -1;
             return 1;
         }
@@ -274,7 +281,7 @@ int pkgi_do_menu(pkgi_input* input)
 
         char text[64];
         if (type == MenuSearch || type == MenuSearchClear || type == MenuText ||
-            type == MenuRefresh || type == MenuShow)
+            type == MenuRefresh || type == MenuShow || type == MenuButton)
         {
             pkgi_strncpy(text, sizeof(text), entry->text);
         }
