@@ -65,7 +65,7 @@ static const MenuEntry menu_entries[] = {
         {MenuShow, "显示PSP游戏", 8},
         {MenuShow, "显示 PSM游戏", 16},
 
-        {MenuAbout, "关于PKGj汉化版", 0},
+        {MenuAbout, "关于PKGj中文版", 0},
 };
 
 int pkgi_menu_is_open(void)

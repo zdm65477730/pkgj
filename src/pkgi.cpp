@@ -1012,7 +1012,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
                 pkgi_dialog_message(
                         fmt::format(
                                 "已将 {} 添加至LiveArea下载队列",
-                                item.name)
+                                item.titleid)
                                 .c_str());
             }
             else
@@ -1274,7 +1274,8 @@ int main()
                         pkgi_set_mode(ModePspGames);
                         break;
                     case MenuResultAbout:
-                        pkgi_dialog_question(fmt::format("关于\nPKGj中文版 v1.02, 源码基于GitHub开发者blastrock的PKGj v0.47, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!\n生效中的配置信息: \nPSV游戏: {}\nPSV追加下载内容: {}\nPSV主题: {}\nPSP游戏: {}\nPSX游戏: {}\nPSM游戏: {}\n兼容包: {}\n",
+                        pkgi_dialog_question(fmt::format("关于\nPKGj中文版 v{}, 源码基于GitHub开发者blastrock的PKGj v0.47, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!\n生效中的配置信息: \nPSV游戏: {}\nPSV追加下载内容: {}\nPSV主题: {}\nPSP游戏: {}\nPSX游戏: {}\nPSM游戏: {}\n兼容包: {}\n",
+                            version,
                             config.games_url,
                             config.dlcs_url,
                             config.themes_url,
