@@ -10,6 +10,7 @@
 #define PKGJ_UPDATE_URL "http://47.100.37.250/pkgj"
 #define PKGJ_UPDATE_URL_VERSION PKGJ_UPDATE_URL "/version"
 
+
 namespace
 {
 std::string version;
@@ -25,7 +26,7 @@ void start_download()
         const auto url =
                 fmt::format("{}/files/pkgj-v{}.vpk", PKGJ_UPDATE_URL, version);
 
-        pkgi_dialog_message("正在下載新版本安裝文件...", 0);
+        pkgi_dialog_message("正在下载新版本安装文件...", 0);
 
         try
         {
@@ -57,14 +58,14 @@ void start_download()
 
         pkgi_dialog_message(
                 fmt::format(
-                        "新版本PKGj安裝文件已下載至{}, 請使"
-                        "用VitaShell進行安裝",
+                        "新版本PKGj中文版安装文件已下载至{}, 请使 "
+                        "用VitaShell进行安装",
                         filename)
                         .c_str());
     }
     catch (const std::exception& e)
     {
-        pkgi_dialog_error(fmt::format("下載失敗: {}", e.what()).c_str());
+        pkgi_dialog_error(fmt::format("下载失败: {}", e.what()).c_str());
     }
 }
 
@@ -91,16 +92,16 @@ void update_thread()
 
             pkgi_dialog_question(
                     fmt::format(
-                            "PKGj中文版現已更新至{}版本!\n是否立即"
-                            "下載?",
+                            "PKGj中文版现已更新至{}版本!\n是否立即"
+                            "下载?",
                             last_version)
                             .c_str(),
-                    {{"立即下載",
+                    {{"立即下载",
                       [] {
                           pkgi_start_thread(
                                   "pkgj_update_download", &start_download);
                       }},
-                     {"以後再説", [] {}}});
+                     {"以后再说", [] {}}});
         }
     }
     catch (const std::exception& e)

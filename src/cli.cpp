@@ -32,7 +32,7 @@ int extract(int argc, char* argv[])
     uint8_t rif[PKGI_PSM_RIF_SIZE];
     char message[256];
     if (argv[3][0] && !pkgi_zrif_decode(argv[3], rif, message, sizeof(message)))
-        throw std::runtime_error(fmt::format("無法解碼zRIF: {}", message));
+        throw std::runtime_error(fmt::format("can't decode zrif: {}", message));
 
     Download d(std::make_unique<FileHttp>());
 
@@ -52,7 +52,7 @@ Mode arg_to_mode(std::string const& arg)
     if (arg == "PSVGAMES")
         return ModeGames;
     else
-        throw std::runtime_error("不支持的arg: " + arg);
+        throw std::runtime_error("unsupported arg: " + arg);
 }
 
 int refreshlist(int argc, char* argv[])

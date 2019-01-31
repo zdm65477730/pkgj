@@ -664,7 +664,7 @@ void pkgi_delete_dir(const std::string& path)
 
     if (dfd < 0)
         throw formatEx<std::runtime_error>(
-                "打開失敗({}):\n{:#08x}",
+                "打开失败 ({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(dfd));
 
@@ -694,7 +694,7 @@ void pkgi_delete_dir(const std::string& path)
             const auto ret = sceIoRemove(new_path.c_str());
             if (ret < 0)
                 throw formatEx<std::runtime_error>(
-                        "刪除失敗({}):\n{:#08x}",
+                        "删除失败 ({}):\n{:#08x}",
                         new_path,
                         static_cast<uint32_t>(ret));
         }
@@ -706,7 +706,7 @@ void pkgi_delete_dir(const std::string& path)
     res = sceIoRmdir(path.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "文件夾刪除失敗({}):\n{:#08x}",
+                "文件夹删除失败 ({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(res));
 }
@@ -826,7 +826,7 @@ std::string pkgi_get_system_version()
         const auto res = _vshSblGetSystemSwVersion(&info);
         if (res < 0)
             throw std::runtime_error(fmt::format(
-                    "獲取系統軟件版本失敗: {:#08x}",
+                    "获取系统软件版本失败: {:#08x}",
                     static_cast<uint32_t>(res)));
         return std::string(info.versionString);
     }();

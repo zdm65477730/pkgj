@@ -40,7 +40,7 @@ VitaHttp::~VitaHttp()
 void VitaHttp::start(const std::string& url, uint64_t offset)
 {
     if (_http)
-        throw HttpError("HTTP連接已啓動");
+        throw HttpError("HTTP连接已启动");
 
     LOG("http get");
 
@@ -55,7 +55,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     }
 
     if (!http)
-        throw HttpError("内部錯誤: 同時發起的連接過多");
+        throw HttpError("内部错误: 同时发起的连接过多");
 
     int tmpl = -1;
     int conn = -1;
@@ -66,7 +66,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((tmpl = sceHttpCreateTemplate(
                  PKGI_USER_AGENT, SCE_HTTP_VERSION_1_1, SCE_TRUE)) < 0)
         throw HttpError(fmt::format(
-                "創建模板失敗: {:#08x}",
+                "创建模板失败: {:#08x}",
                 static_cast<uint32_t>(tmpl)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -78,7 +78,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((conn = sceHttpCreateConnectionWithURL(tmpl, url.c_str(), SCE_FALSE)) <
         0)
         throw HttpError(fmt::format(
-                "創建與鏈接的連接失敗: {:#08x}",
+                "创建与链接的连接失败: {:#08x}",
                 static_cast<uint32_t>(conn)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -89,7 +89,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((req = sceHttpCreateRequestWithURL(
                  conn, SCE_HTTP_METHOD_GET, url.c_str(), 0)) < 0)
         throw HttpError(fmt::format(
-                "創建鏈接的請求失敗: {:#08x}",
+                "创建链接的请求失败: {:#08x}",
                 static_cast<uint32_t>(req)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -106,17 +106,17 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
         if ((err = sceHttpAddRequestHeader(
                      req, "Range", range, SCE_HTTP_HEADER_ADD)) < 0)
             throw HttpError(fmt::format(
-                    "添加請求文件頭失: {:#08x}",
+                    "添加请求文件头失败: {:#08x}",
                     static_cast<uint32_t>(err)));
     }
 
     if ((err = sceHttpSendRequest(req, NULL, 0)) < 0)
         throw formatEx<HttpError>(
-                "發送請求失敗: {:#08x}\n{}",
+                "发送请求失败: {:#08x}\n{}",
                 static_cast<uint32_t>(err),
                 static_cast<uint32_t>(err) == 0x80431075
-                        ? "PSVita無法支持HTTPS鏈接"
-                          "\n請更換HTTP鏈接"
+                        ? "PSVita无法支持HTTPS链接"
+                          "\n请更换HTTP链接"
                         : "");
 
     http->used = 1;
@@ -135,7 +135,7 @@ int64_t VitaHttp::read(uint8_t* buffer, uint64_t size)
     int read = sceHttpReadData(_http->req, buffer, size);
     if (read < 0)
         throw HttpError(fmt::format(
-                "下載錯誤{:#08x}",
+                "下载错误 {:#08x}",
                 static_cast<uint32_t>(static_cast<int32_t>(read))));
     return read;
 }
@@ -156,7 +156,7 @@ int64_t VitaHttp::get_length()
     res = sceHttpGetResponseContentLength(_http->req, &content_length);
     if (res < 0)
         throw HttpError(fmt::format(
-                "獲取響應内容長度失敗: {:#08x}",
+                "获取响应内容长度失败: {:#08x}",
                 static_cast<uint32_t>(res)));
     if (res == (int)SCE_HTTP_ERROR_NO_CONTENT_LENGTH ||
         res == (int)SCE_HTTP_ERROR_CHUNK_ENC)
@@ -176,7 +176,7 @@ int VitaHttp::get_status()
     int status;
     if ((res = sceHttpGetStatusCode(_http->req, &status)) < 0)
         throw HttpError(fmt::format(
-                "獲取狀態代碼失敗: {:#08x}",
+                "获取状态代码失败: {:#08x}",
                 static_cast<uint32_t>(res)));
 
     return status;
@@ -193,7 +193,7 @@ void VitaHttp::check_status()
     LOGF("http status code = {}", status);
 
     if (status != 200 && status != 206)
-        throw HttpError(fmt::format("HTTP狀態異常: {}", status));
+        throw HttpError(fmt::format("HTTP状态异常: {}", status));
 }
 
 VitaHttp::operator bool() const

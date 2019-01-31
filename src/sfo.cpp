@@ -36,7 +36,7 @@ std::string pkgi_sfo_get_string(
             reinterpret_cast<const SfoEntry*>(buffer + sizeof(SfoHeader));
 
     if (header->magic != SFO_MAGIC)
-        throw std::runtime_error("無法分析SFO, 無效文件頭");
+        throw std::runtime_error("无法分析SFO, 无效文件头");
 
     if (size < sizeof(SfoHeader) + header->count * sizeof(SfoEntry))
         throw std::runtime_error("param.sfo不完整");

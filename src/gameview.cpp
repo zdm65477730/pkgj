@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 
 #include "dialog.hpp"
+#include "file.hpp"
 #include "imgui.hpp"
 extern "C"
 {
@@ -39,7 +40,7 @@ void GameView::render()
     ImGui::SetNextWindowSize(ImVec2(GameViewWidth, GameViewHeight), 0);
 
     ImGui::Begin(
-            fmt::format("{}###gameview", _item->titleid)
+            fmt::format("{}###gameview",  _item->titleid)
                     .c_str(),
             nullptr,
             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -50,35 +51,34 @@ void GameView::render()
                     ImGuiWindowFlags_NoInputs);
 
     ImGui::PushTextWrapPos(0.f);
-    ImGui::Text(fmt::format("當前系統固件版本: {}", pkgi_get_system_version())
+    ImGui::Text(fmt::format("当前系统固件版本: {}", pkgi_get_system_version())
                         .c_str());
     ImGui::Text(
             fmt::format(
-                    "運行所需固件版本: {}", get_min_system_version())
+                    "运行所需固件版本: {}", get_min_system_version())
                     .c_str());
 
     ImGui::Text(" ");
-    ImGui::Text("- 溫馨提示: reF00D已發佈, 建議使用該插件替代兼容包!");
 
     ImGui::Text(fmt::format(
-                        "游戲安裝及版本更新情況: {}",
-                        _game_version.empty() ? "未安裝" : _game_version)
+                        "游戏安装及版本更新情况: {}",
+                        _game_version.empty() ? "未安装" : _game_version)
                         .c_str());
     if (_comppack_versions.present && _comppack_versions.base.empty() &&
         _comppack_versions.patch.empty())
     {
-        ImGui::Text("已安裝的游戲兼容包: 未知版本");
+        ImGui::Text("已安装的游戏兼容包: 未知版本");
     }
     else
     {
         ImGui::Text(fmt::format(
-                            "游戲本體兼容包安裝情況: {}",
-                            _comppack_versions.base.empty() ? "未安裝" : "已安裝")
+                            "游戏本体兼容包安装情况: {}",
+                            _comppack_versions.base.empty() ? "未安装" : "已安装")
                             .c_str());
         ImGui::Text(fmt::format(
-                            "游戲更新兼容包及版本情況: {}",
+                            "游戏更新兼容包及版本情况: {}",
                             _comppack_versions.patch.empty()
-                                    ? "未安裝"
+                                    ? "未安装"
                                     : _comppack_versions.patch)
                             .c_str());
     }
@@ -91,24 +91,24 @@ void GameView::render()
 
     ImGui::PopTextWrapPos();
 
-    if (!_downloader->is_in_queue(Game, _item->content))
+    if (_patch_info_fetcher.get_status() == PatchInfoFetcher::Status::Found)
     {
-        if (ImGui::Button("安裝游戲本體###installgame"))
+        if (ImGui::Button("安装游戏本体及更新###installgame"))
             start_download_package();
     }
     else
     {
-        if (ImGui::Button("取消安裝游戲本體###installgame"))
-            cancel_download_package();
+        if (ImGui::Button("安装游戏###installgame"))
+            start_download_package();
     }
 
     switch (_patch_info_fetcher.get_status())
     {
     case PatchInfoFetcher::Status::Fetching:
-        ImGui::Button("正在查找遊戲更新...###installpatch");
+        ImGui::Button("正在查找游戏更新...###installpatch");
         break;
     case PatchInfoFetcher::Status::NoUpdate:
-        ImGui::Button("未查找到遊戲更新###installpatch");
+        ImGui::Button("未找到游戏更新###installpatch");
         break;
     case PatchInfoFetcher::Status::Found:
     {
@@ -116,20 +116,20 @@ void GameView::render()
         if (!_downloader->is_in_queue(Patch, _item->titleid))
         {
             if (ImGui::Button(fmt::format(
-                                      "安裝遊戲更新 {}###installpatch",
+                                      "安装游戏更新 {}###installpatch",
                                       patch_info->version)
                                       .c_str()))
                 start_download_patch(*patch_info);
         }
         else
         {
-            if (ImGui::Button("取消安裝遊戲更新###installpatch"))
+            if (ImGui::Button("取消安装游戏更新###installpatch"))
                 cancel_download_patch();
         }
         break;
     }
     case PatchInfoFetcher::Status::Error:
-        ImGui::Button("無法獲取遊戲更新信息###installpatch");
+        ImGui::Button("无法获取游戏更新信息###installpatch");
         break;
     }
 
@@ -137,13 +137,13 @@ void GameView::render()
     {
         if (!_downloader->is_in_queue(CompPackBase, _item->titleid))
         {
-            if (ImGui::Button("安裝遊戲本體兼容"
+            if (ImGui::Button("安装游戏本体兼容"
                               "包###installbasecomppack"))
                 start_download_comppack(false);
         }
         else
         {
-            if (ImGui::Button("取消安裝遊戲本體兼容"
+            if (ImGui::Button("取消安装游戏本体兼容"
                               "包###installbasecomppack"))
                 cancel_download_comppacks(false);
         }
@@ -153,7 +153,7 @@ void GameView::render()
         if (!_downloader->is_in_queue(CompPackPatch, _item->titleid))
         {
             if (ImGui::Button(fmt::format(
-                                      "安裝遊戲更新兼容包 "
+                                      "安装游戏更新兼容包"
                                       "{}###installpatchcommppack",
                                       _patch_comppack->app_version)
                                       .c_str()))
@@ -161,13 +161,13 @@ void GameView::render()
         }
         else
         {
-            if (ImGui::Button("取消安裝遊戲更新兼容"
+            if (ImGui::Button("取消安装游戏更新兼容"
                               "包###installpatchcommppack"))
                 cancel_download_comppacks(true);
         }
     }
 
-    if (ImGui::Button("關閉"))
+    if (ImGui::Button("关闭"))
         _closed = true;
 
     ImGui::End();
@@ -188,19 +188,26 @@ void GameView::printDiagnostic()
     auto const systemVersion = pkgi_get_system_version();
     auto const minSystemVersion = get_min_system_version();
 
-    ImGui::Text("運行診斷:");
+    ImGui::Text("运行诊断:");
 
     if (systemVersion < minSystemVersion)
     {
         if (!_comppack_versions.present)
-            printError(
-                    "- 當前固件版本低於游戲運行所需固件版本, 必須"
-                    "安裝兼容包");
+        {
+            if (!_refood_present)
+                printError(
+                        "- 当前系统固件版本低于游戏运行所需固件版本, 必须"
+                        "安装兼容包或安装reF00D插件");
+            else
+                ImGui::Text(
+                        "- 游戏将通过reF00D插件引导运行, "
+                        "安装兼容包可有效缩短游戏启动所需时间");
+        }
     }
     else
     {
         ImGui::Text(
-                "- 當前固件版本已高於游戲運行所需固件版本, 無需安裝兼容"
+                "- 当前系统固件版本已高于游戏运行所需固件版本, 无需安装兼容"
                 "包");
     }
 
@@ -209,17 +216,17 @@ void GameView::printDiagnostic()
     {
         ImGui::TextColored(
                 Yellow,
-                "- 游戲兼容包已安裝,但并非通過PKGj進行安裝, 請"
-                "確保該兼容包與游戲版本相匹配, 如出現運行異常, 請通過PKGj"
-                "重新安裝");
+                "- 游戏兼容包已安装, 但并非通过PKGj进行安装, 请"
+                "确保该兼容包与游戏版本相匹配，如出现运行异常, 请通过PKGj"
+                "重新安装");
         ok = false;
     }
 
     if (_comppack_versions.base.empty() && !_comppack_versions.patch.empty())
         printError(
-                "- 已安裝游戲更新兼容包, 但未安裝"
-                "游戲本體兼容包, 請先安裝游戲本體兼容包, "
-                "再安裝游戲更新兼容包");
+                "- 已安装游戏更新兼容包, 但未安装"
+                "游戏本体兼容包, 请先安装游戏本体兼容包, "
+                "再安装游戏更新兼容包");
 
     std::string comppack_version;
     if (!_comppack_versions.patch.empty())
@@ -230,25 +237,25 @@ void GameView::printDiagnostic()
     if (_item->presence == PresenceInstalled && !comppack_version.empty() &&
         comppack_version < _game_version)
         printError(
-                "- 游戲版本與已安裝的兼容包版本"
-                "不匹配. 如游戲版本已更新, 請"
-                "安裝游戲更新兼容包");
+                "- 游戏版本与已安装的兼容包版本"
+                "不匹配, 如游戏版本已更新, 请"
+                "安装游戏更新兼容包");
 
     if (_item->presence == PresenceInstalled &&
         comppack_version > _game_version)
         printError(
-                "- 游戲版本與已安裝的兼容包版本"
-                "不匹配. 請刪除游戲更新文件恢復至初始版本, "
-                "或通過桌面氣泡更新游戲版本");
+                "- 游戏版本与已安装的兼容包版本"
+                "不匹配, 请删除游戏更新文件恢复至初始版本, "
+                "或通过LiveArea更新游戏版本");
 
     if (_item->presence != PresenceInstalled)
     {
-        ImGui::Text("- 未安裝游戲");
+        ImGui::Text("- 未安装游戏");
         ok = false;
     }
 
     if (ok)
-        ImGui::TextColored(Green, "已滿足運行條件");
+        ImGui::TextColored(Green, "已满足运行条件");
 }
 
 std::string GameView::get_min_system_version()
@@ -263,6 +270,7 @@ std::string GameView::get_min_system_version()
 void GameView::refresh()
 {
     LOGF("refreshing gameview");
+    _refood_present = pkgi_file_exists("ur0:tai/keys.bin");
     _game_version = pkgi_get_game_version(_item->titleid);
     _comppack_versions = pkgi_get_comppack_versions(_item->titleid);
 }
@@ -272,7 +280,7 @@ void GameView::start_download_package()
     if (_item->presence == PresenceInstalled)
     {
         LOGF("[{}] {} - already installed", _item->titleid, _item->name);
-        pkgi_dialog_error("已安裝");
+        pkgi_dialog_error("已安装");
         return;
     }
 

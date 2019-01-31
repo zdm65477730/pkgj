@@ -16,6 +16,11 @@ std::vector<std::string> pkgi_get_installed_games()
     return pkgi_list_dir_contents("ux0:app");
 }
 
+std::vector<std::string> pkgi_get_installed_themes()
+{
+    return pkgi_list_dir_contents("ux0:theme");
+}
+
 namespace
 {
 std::string pkgi_extract_package_version(const std::string& package)
@@ -78,10 +83,10 @@ void pkgi_install(const char* contentid)
     const auto res = scePromoterUtilityPromotePkgWithRif(path, 1);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "調用NoNpDrm函數錯誤: {:#08x}\n{}",
+                "调用NoNpDrm函数错误: {:#08x}\n{}",
                 static_cast<uint32_t>(res),
                 static_cast<uint32_t>(res) == 0x80870004
-                        ? "請檢查NoNpDrm插件安裝是否正確"
+                        ? "请检查NoNpDrm插件安装是否正确"
                         : "");
 }
 
@@ -95,7 +100,7 @@ void pkgi_install_update(const std::string& titleid)
     const auto res = scePromoterUtilityPromotePkgWithRif(src.c_str(), 1);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "調用NoNpDrm函數錯誤: {:#08x}",
+                "调用NoNpDrm函数错误: {:#08x}",
                 static_cast<uint32_t>(res));
 }
 
@@ -167,7 +172,7 @@ void pkgi_install_psmgame(const char* contentid)
     const auto res = sceIoRename(src.c_str(), dest.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "無法重命名: {:#08x}", static_cast<uint32_t>(res));
+                "无法重命名: {:#08x}", static_cast<uint32_t>(res));
 }
 
 void pkgi_install_pspgame(const char* partition, const char* contentid)
@@ -183,7 +188,7 @@ void pkgi_install_pspgame(const char* partition, const char* contentid)
     int res = sceIoRename(path.c_str(), dest.c_str());
     if (res < 0)
         throw std::runtime_error(fmt::format(
-                "無法重命名: {:#08x}", static_cast<uint32_t>(res)));
+                "无法重命名: {:#08x}", static_cast<uint32_t>(res)));
 }
 
 void pkgi_install_pspgame_as_iso(const char* partition, const char* contentid)

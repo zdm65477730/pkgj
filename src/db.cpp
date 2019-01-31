@@ -23,15 +23,16 @@ std::string pkgi_mode_to_string(Mode mode)
 #define RET(mode, str) \
     case Mode##mode:   \
         return str
-        RET(Games, "PlayStation Vita 游戲");
-        RET(Dlcs, "PlayStation Vita 追加下載内容");
-        RET(PsmGames, "PlayStation Mobile 游戲");
-        RET(PsxGames, "PlayStation X 游戲");
-        RET(PspGames, "PlayStation Portable 游戲");
+        RET(Games, "PlayStation Vita 游戏");
+        RET(Dlcs, "PlayStation Vita 追加下载内容");
+        RET(Demos, "PlayStation Vita 体验版游戏");
+        RET(Themes, "PlayStation Vita 主题");
+        RET(PsmGames, "PlayStation Mobile 游戏");
+        RET(PsxGames, "PlayStation X 游戏");
+        RET(PspGames, "PlayStation Portable 游戏");
 #undef RET
-    default:
-        return "未知模式";
     }
+    return "未知模式";
 }
 
 TitleDatabase::TitleDatabase(const std::string& dbPath) : _dbPath(dbPath)
@@ -46,6 +47,10 @@ static const char* pkgi_mode_to_file_name(Mode mode)
         return "titles_psvgames.tsv";
     case ModeDlcs:
         return "titles_psvdlcs.tsv";
+    case ModeDemos:
+        return "titles_psvdemos.tsv";
+    case ModeThemes:
+        return "titles_psvthemes.tsv";
     case ModePsmGames:
         return "titles_psmgames.tsv";
     case ModePspGames:
@@ -126,7 +131,7 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, 10);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("無效列");
+            throw std::runtime_error("无效列");
         }
     case ModeDlcs:
         switch (column)
@@ -143,7 +148,41 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, -1);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("無效列");
+            throw std::runtime_error("无效列");
+        }
+    case ModeDemos:
+        switch (column)
+        {
+            MAP_COL(Region, 1);
+            MAP_COL(Name, 2);
+            MAP_COL(Url, 3);
+            MAP_COL(Zrif, 4);
+            MAP_COL(Content, 5);
+            MAP_COL(LastModification, 6);
+            MAP_COL(NameOrg, 7);
+            MAP_COL(Size, 8);
+            MAP_COL(Digest, 9);
+            MAP_COL(FwVersion, 10);
+            MAP_COL(AppVersion, -1);
+        default:
+            throw std::runtime_error("无效列");
+        }
+    case ModeThemes:
+        switch (column)
+        {
+            MAP_COL(Region, 1);
+            MAP_COL(Name, 2);
+            MAP_COL(Url, 3);
+            MAP_COL(Zrif, 4);
+            MAP_COL(Content, 5);
+            MAP_COL(LastModification, 6);
+            MAP_COL(Size, 7);
+            MAP_COL(Digest, 8);
+            MAP_COL(NameOrg, -1);
+            MAP_COL(FwVersion, -1);
+            MAP_COL(AppVersion, -1);
+        default:
+            throw std::runtime_error("无效列");
         }
     case ModePsmGames:
         switch (column)
@@ -160,7 +199,7 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, -1);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("無效列");
+            throw std::runtime_error("无效列");
         }
     case ModePsxGames:
         switch (column)
@@ -177,7 +216,7 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(FwVersion, -1);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("無效列");
+            throw std::runtime_error("无效列");
         }
     case ModePspGames:
         switch (column)
@@ -194,10 +233,10 @@ int pkgi_get_column_number(Mode mode, Column column)
             MAP_COL(Zrif, -1);
             MAP_COL(AppVersion, -1);
         default:
-            throw std::runtime_error("無效列");
+            throw std::runtime_error("无效列");
         }
     default:
-        throw std::runtime_error("無效模式");
+        throw std::runtime_error("无效模式");
     }
 #undef MAP_COL
 }
@@ -244,7 +283,11 @@ void TitleDatabase::update(Mode mode, Http* http, const std::string& update_url)
 
     if (db_size == 0)
         throw std::runtime_error(
-                "列表為空...請更新PKGj版本");
+                "列表为空... 请更新PKGj版本");
+    if (db_size != db_total)
+        throw std::runtime_error(
+                "TSV文件不完整, 请检查网络连接是否异常, 然后"
+                "重试");
 
     pkgi_close(item_file);
     item_file = nullptr;
@@ -272,7 +315,7 @@ const char* region_to_string(GameRegion region)
     case RegionUSA:
         return "US";
     default:
-        throw std::runtime_error(fmt::format("未知發行區域 {}", (int)region));
+        throw std::runtime_error(fmt::format("未知发行区域 {}", (int)region));
     }
 }
 
@@ -307,7 +350,7 @@ bool lower(const DbItem& a, const DbItem& b, DbSort sort, DbSortOrder order)
     else if (sort == SortByDate)
         cmp = a.date.compare(b.date);
     else
-        throw std::runtime_error(fmt::format("未知排序順序 {}", sort));
+        throw std::runtime_error(fmt::format("未知排序顺序 {}", sort));
 
     if (cmp == 0)
         cmp = a.titleid.compare(b.titleid);
@@ -429,7 +472,7 @@ void TitleDatabase::reload(
         catch (const std::exception& e)
         {
             throw formatEx<std::runtime_error>(
-                    "無法解析行 {}: {}", line, e.what());
+                    "无法解析行 {}: {}", line, e.what());
         }
     }
 

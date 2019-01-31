@@ -4,6 +4,7 @@ extern "C"
 {
 #include "style.h"
 }
+#include "bgdl.hpp"
 #include "comppackdb.hpp"
 #include "config.hpp"
 #include "db.hpp"
@@ -68,6 +69,7 @@ std::unique_ptr<CompPackDatabase> comppack_db_games;
 std::unique_ptr<CompPackDatabase> comppack_db_updates;
 
 std::set<std::string> installed_games;
+std::set<std::string> installed_themes;
 
 std::unique_ptr<GameView> gameview;
 bool need_refresh = true;
@@ -99,9 +101,30 @@ Type mode_to_type(Mode mode)
         return PsxGame;
     case ModePspGames:
         return PspGame;
+    case ModeDemos:
+    case ModeThemes:
+        throw formatEx<std::runtime_error>(
+                "不支持的模式 {}", static_cast<int>(mode));
     }
     throw formatEx<std::runtime_error>(
             "未知模式 {}", static_cast<int>(mode));
+}
+
+BgdlType mode_to_bgdl_type(Mode mode)
+{
+    switch (mode)
+    {
+    case ModeGames:
+    case ModeDemos:
+        return BgdlTypeGame;
+    case ModeDlcs:
+        return BgdlTypeDlc;
+    case ModeThemes:
+        return BgdlTypeTheme;
+    default:
+        throw formatEx<std::runtime_error>(
+                "不支持的后台下载模式 {}", static_cast<int>(mode));
+    }
 }
 
 void configure_db(TitleDatabase* db, const char* search, const Config* config)
@@ -123,7 +146,7 @@ void configure_db(TitleDatabase* db, const char* search, const Config* config)
         snprintf(
                 error_state,
                 sizeof(error_state),
-                "無法重新加載列表: %s",
+                "无法重新加载列表: %s",
                 e.what());
         pkgi_dialog_error(error_state);
     }
@@ -137,6 +160,10 @@ std::string const& pkgi_get_url_from_mode(Mode mode)
         return config.games_url;
     case ModeDlcs:
         return config.dlcs_url;
+    case ModeDemos:
+        return config.demos_url;
+    case ModeThemes:
+        return config.themes_url;
     case ModePsmGames:
         return config.psm_games_url;
     case ModePspGames:
@@ -176,7 +203,7 @@ void pkgi_refresh_thread(void)
             {
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
-                        "正在刷新 游戲本體兼容包 [{}/{}]",
+                        "正在刷新 游戏本体兼容包 [{}/{}]",
                         ModeCount + 2 - 1,
                         ModeCount + 2);
             }
@@ -188,7 +215,7 @@ void pkgi_refresh_thread(void)
             {
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
-                        "正在刷新 游戲更新兼容包 [{}/{}]",
+                        "正在刷新 游戏更新兼容包 [{}/{}]",
                         ModeCount + 2,
                         ModeCount + 2);
             }
@@ -207,7 +234,7 @@ void pkgi_refresh_thread(void)
         snprintf(
                 error_state,
                 sizeof(error_state),
-                "無法獲取列表: %s",
+                "无法获取列表: %s",
                 e.what());
         pkgi_dialog_error(error_state);
     }
@@ -221,14 +248,19 @@ const char* pkgi_get_mode_partition()
                    : "ux0:";
 }
 
-void pkgi_refresh_installed_games()
+void pkgi_refresh_installed_packages()
 {
     auto games = pkgi_get_installed_games();
-
     installed_games.clear();
     installed_games.insert(
             std::make_move_iterator(games.begin()),
             std::make_move_iterator(games.end()));
+
+    auto themes = pkgi_get_installed_themes();
+    installed_themes.clear();
+    installed_themes.insert(
+            std::make_move_iterator(themes.begin()),
+            std::make_move_iterator(themes.end()));
 }
 
 bool pkgi_is_installed(const char* titleid)
@@ -236,35 +268,23 @@ bool pkgi_is_installed(const char* titleid)
     return installed_games.find(titleid) != installed_games.end();
 }
 
+bool pkgi_theme_is_installed(std::string contentid)
+{
+    if (contentid.size() < 19)
+        return false;
+
+    contentid.erase(16, 3);
+    contentid.erase(0, 7);
+    return installed_themes.find(contentid) != installed_themes.end();
+}
+
 void pkgi_install_package(Downloader& downloader, DbItem* item)
 {
-    switch (mode)
+    if (item->presence == PresenceInstalled)
     {
-    case ModeGames:
-    case ModePsmGames:
-    case ModePsxGames:
-    case ModePspGames:
-        if (item->presence == PresenceInstalled)
-        {
-            LOGF("[{}] {} - already installed", item->titleid, item->name);
-            pkgi_dialog_error("已安裝");
-            return;
-        }
-        break;
-    case ModeDlcs:
-        if (item->presence == PresenceInstalled)
-        {
-            LOGF("[{}] {} - already installed", item->content, item->name);
-            pkgi_dialog_error("已安裝");
-            return;
-        }
-        if (item->presence != PresenceGamePresent)
-        {
-            LOGF("[{}] {} - game not installed", item->titleid, item->name);
-            pkgi_dialog_error("未安裝該追加下載内容對應的游戲");
-            return;
-        }
-        break;
+        LOGF("[{}] {} - already installed", item->content, item->name);
+        pkgi_dialog_error("Already installed");
+        return;
     }
 
     pkgi_start_download(downloader, *item);
@@ -422,6 +442,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
             switch (mode)
             {
             case ModeGames:
+            case ModeDemos:
                 if (pkgi_is_installed(titleid))
                     item->presence = PresenceInstalled;
                 else if (downloader.is_in_queue(Game, item->content))
@@ -451,6 +472,12 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
                 if (downloader.is_in_queue(Dlc, item->content))
                     item->presence = PresenceInstalling;
                 else if (pkgi_dlc_is_installed(item->content.c_str()))
+                    item->presence = PresenceInstalled;
+                else if (pkgi_is_installed(titleid))
+                    item->presence = PresenceGamePresent;
+                break;
+            case ModeThemes:
+                if (pkgi_theme_is_installed(item->content))
                     item->presence = PresenceInstalled;
                 else if (pkgi_is_installed(titleid))
                     item->presence = PresenceGamePresent;
@@ -562,7 +589,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
 
     if (db_count == 0)
     {
-        const char* text = "無數據! 請嘗試刷新";
+        const char* text = "无数据! 请尝试刷新";
 
         int w = pkgi_text_width(text);
         pkgi_draw_text(
@@ -609,6 +636,10 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
                     item,
                     comppack_db_games->get(item->titleid),
                     comppack_db_updates->get(item->titleid));
+        else if (mode == ModeThemes || mode == ModeDemos)
+        {
+            pkgi_start_download(downloader, *item);
+        }
         else
         {
             if (downloader.is_in_queue(mode_to_type(mode), item->content))
@@ -627,6 +658,8 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
         config_temp = config;
         int allow_refresh =
                 !config.games_url.empty() << 0 | !config.dlcs_url.empty() << 1 |
+                !config.demos_url.empty() << 6 |
+                !config.themes_url.empty() << 5 |
                 !config.psx_games_url.empty() << 2 |
                 !config.psp_games_url.empty() << 3 |
                 (!config.psm_games_url.empty() && config.psm_readme_disclaimer)
@@ -661,7 +694,7 @@ void pkgi_do_head(void)
     const char* version = PKGI_VERSION;
 
     char title[256];
-    pkgi_snprintf(title, sizeof(title), "PKGj v%s 中文版", version);
+    pkgi_snprintf(title, sizeof(title), "PKGj中文版 v%s", version);
     pkgi_draw_text(0, 0, PKGI_COLOR_TEXT_HEAD, title);
 
     pkgi_draw_rect(
@@ -678,7 +711,7 @@ void pkgi_do_head(void)
         pkgi_snprintf(
                 battery,
                 sizeof(battery),
-                "電池: %u%%",
+                "电池: %u%%",
                 pkgi_bettery_get_level());
 
         uint32_t color;
@@ -790,14 +823,14 @@ void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(
                 text,
                 sizeof(text),
-                "正在下載 %s: %s (%s, %d%%)",
+                "正在下载 %s: %s (%s, %d%%)",
                 type_to_string(current_download->type).c_str(),
                 current_download->name.c_str(),
                 sspeed.c_str(),
                 static_cast<int>(download_offset * 100 / download_size));
     }
     else
-        pkgi_snprintf(text, sizeof(text), "暫無下載");
+        pkgi_snprintf(text, sizeof(text), "暂无下载");
 
     pkgi_draw_text(0, bottom_y, PKGI_COLOR_TEXT_TAIL, text);
 
@@ -808,11 +841,11 @@ void pkgi_do_tail(Downloader& downloader)
 
     if (count == total)
     {
-        pkgi_snprintf(text, sizeof(text), "計數: %u", count);
+        pkgi_snprintf(text, sizeof(text), "计数: %u", count);
     }
     else
     {
-        pkgi_snprintf(text, sizeof(text), "計數: %u (%u)", count, total);
+        pkgi_snprintf(text, sizeof(text), "计数: %u (%u)", count, total);
     }
     pkgi_draw_text(0, second_line, PKGI_COLOR_TEXT_TAIL, text);
 
@@ -832,7 +865,7 @@ void pkgi_do_tail(Downloader& downloader)
     }
 
     char free[64];
-    pkgi_snprintf(free, sizeof(free), "可用空間: %s", size);
+    pkgi_snprintf(free, sizeof(free), "可用空间: %s", size);
 
     int rightw = pkgi_text_width(free);
     pkgi_draw_text(
@@ -848,23 +881,23 @@ void pkgi_do_tail(Downloader& downloader)
     if (pkgi_menu_is_open())
     {
         bottom_text = fmt::format(
-                "{} 選擇  " PKGI_UTF8_T " 關閉  {} 取消",
+                "{} 选择  " PKGI_UTF8_T " 关闭  {} 取消",
                 pkgi_get_ok_str(),
                 pkgi_get_cancel_str());
     }
     else
     {
         if (mode == ModeGames)
-            bottom_text += fmt::format("{} 詳情 ", pkgi_get_ok_str());
+            bottom_text += fmt::format("{} 详情 ", pkgi_get_ok_str());
         else
         {
             DbItem* item = db->get(selected_item);
             if (item && item->presence == PresenceInstalling)
                 bottom_text += fmt::format("{} 取消 ", pkgi_get_ok_str());
             else if (item && item->presence != PresenceInstalled)
-                bottom_text += fmt::format("{} 安裝 ", pkgi_get_ok_str());
+                bottom_text += fmt::format("{} 安装 ", pkgi_get_ok_str());
         }
-        bottom_text += PKGI_UTF8_T " 菜單";
+        bottom_text += PKGI_UTF8_T " 菜单";
     }
 
     pkgi_clip_set(
@@ -924,7 +957,7 @@ void pkgi_reload()
         LOGF("error during reload: {}", e.what());
         pkgi_dialog_error(
                 fmt::format(
-                        "數據庫重新加載失敗: {}, 請嘗試刷新?", e.what())
+                        "数据库重新加载失败: {}, 请尝试刷新?", e.what())
                         .c_str());
     }
 }
@@ -946,7 +979,7 @@ void pkgi_open_db()
     {
         LOGF("error during database open: {}", e.what());
         throw formatEx<std::runtime_error>(
-                "數據庫初始化失敗: %s\n是否要清除數據庫緩存?");
+                "数据库初始化失败: %s\n是否要清除数据库缓存?");
     }
 
     pkgi_reload();
@@ -957,31 +990,59 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
 {
     LOGF("[{}] {} - starting to install", item.content, item.name);
 
-    // Just use the maximum size to be safe
-    uint8_t rif[PKGI_PSM_RIF_SIZE];
-    char message[256];
-    if (item.zrif.empty() ||
-        pkgi_zrif_decode(item.zrif.c_str(), rif, message, sizeof(message)))
+    try
     {
-        downloader.add(DownloadItem{
-                mode_to_type(mode),
-                item.name,
-                item.content,
-                item.url,
-                item.zrif.empty()
-                        ? std::vector<uint8_t>{}
-                        : std::vector<uint8_t>(rif, rif + PKGI_PSM_RIF_SIZE),
-                item.has_digest
-                        ? std::vector<uint8_t>(
-                                  item.digest.begin(), item.digest.end())
-                        : std::vector<uint8_t>{},
-                !config.install_psp_as_pbp,
-                pkgi_get_mode_partition(),
-                ""});
+        // Just use the maximum size to be safe
+        uint8_t rif[PKGI_PSM_RIF_SIZE];
+        char message[256];
+        if (item.zrif.empty() ||
+            pkgi_zrif_decode(item.zrif.c_str(), rif, message, sizeof(message)))
+        {
+            if (mode == ModeGames || mode == ModeDlcs || mode == ModeDemos ||
+                mode == ModeThemes)
+            {
+                pkgi_start_bgdl(
+                        mode_to_bgdl_type(mode),
+                        item.name,
+                        item.url,
+                        item.zrif.empty()
+                                ? std::vector<uint8_t>{}
+                                : std::vector<uint8_t>(
+                                          rif, rif + PKGI_PSM_RIF_SIZE));
+                pkgi_dialog_message(
+                        fmt::format(
+                                "已将 {} 添加至LiveArea下载队列",
+                                item.name)
+                                .c_str());
+            }
+            else
+                downloader.add(DownloadItem{
+                        mode_to_type(mode),
+                        item.name,
+                        item.content,
+                        item.url,
+                        item.zrif.empty()
+                                ? std::vector<uint8_t>{}
+                                : std::vector<uint8_t>(
+                                          rif, rif + PKGI_PSM_RIF_SIZE),
+                        item.has_digest ? std::vector<uint8_t>(
+                                                  item.digest.begin(),
+                                                  item.digest.end())
+                                        : std::vector<uint8_t>{},
+                        !config.install_psp_as_pbp,
+                        pkgi_get_mode_partition(),
+                        ""});
+        }
+        else
+        {
+            pkgi_dialog_error(message);
+        }
     }
-    else
+    catch (const std::exception& e)
     {
-        pkgi_dialog_error(message);
+        pkgi_dialog_error(
+                fmt::format("安装失败 {}: {}", item.name, e.what())
+                        .c_str());
     }
 }
 
@@ -993,8 +1054,8 @@ int main()
     {
         if (!pkgi_is_unsafe_mode())
             throw std::runtime_error(
-                    "PKGj需要在Henkaku設置中啓用不安全自製"
-                    "軟件!");
+                    "PKGj需要在Henkaku设置中启用不安全自制"
+                    "软件!");
 
         Downloader downloader;
 
@@ -1005,7 +1066,7 @@ int main()
         };
         downloader.error = [](const std::string& error) {
             // FIXME this runs on the wrong thread
-            pkgi_dialog_error(("下載失敗: " + error).c_str());
+            pkgi_dialog_error(("下载失败: " + error).c_str());
         };
 
         LOG("started");
@@ -1023,9 +1084,7 @@ int main()
 
         if (!config.no_version_check)
             start_update_thread();
-        if(config.firstopen.compare("101")<0)
-            pkgi_dialog_question(fmt::format("這是您首次運行PKGj中文版v1.00, 感謝使用！源碼基於blastrock@GitHub的PKGj v0.45，遵循2-clause BSD授權，禁止用於任何形式的商業用途！下載及使用完全免費，請勿從其他渠道購買！由Anarch13@PSVita破解吧翻譯，5334032@PSVita破解吧修改編譯製作，更多信息敬請訪問PKGj中文版官方wiki").c_str(),
-                {{"不再提示",[] {config.firstopen="101";pkgi_save_config(config);}},{"確定", [] {}}});
+
         const auto imgui_context = ImGui::CreateContext();
         // Force enabling of navigation
         imgui_context->NavDisableHighlight = false;
@@ -1039,7 +1098,7 @@ int main()
                     20.0f,
                     0,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("無法加載 cn0.pvf");
+            throw std::runtime_error("无法加载 cn0.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);
@@ -1081,7 +1140,7 @@ int main()
             if (need_refresh)
             {
                 std::lock_guard<Mutex> lock(refresh_mutex);
-                pkgi_refresh_installed_games();
+                pkgi_refresh_installed_packages();
                 if (!content_to_refresh.empty())
                 {
                     const auto item =
@@ -1167,7 +1226,7 @@ int main()
                     switch (mres)
                     {
                     case MenuResultSearch:
-                        pkgi_dialog_input_text("Search", search_text);
+                        pkgi_dialog_input_text("搜索", search_text);
                         break;
                     case MenuResultSearchClear:
                         search_active = 0;
@@ -1199,6 +1258,12 @@ int main()
                     case MenuResultShowDlcs:
                         pkgi_set_mode(ModeDlcs);
                         break;
+                    case MenuResultShowDemos:
+                        pkgi_set_mode(ModeDemos);
+                        break;
+                    case MenuResultShowThemes:
+                        pkgi_set_mode(ModeThemes);
+                        break;
                     case MenuResultShowPsmGames:
                         pkgi_set_mode(ModePsmGames);
                         break;
@@ -1208,12 +1273,22 @@ int main()
                     case MenuResultShowPspGames:
                         pkgi_set_mode(ModePspGames);
                         break;
-                    case MenuAbout:
-                            pkgi_dialog_question(fmt::format("關於\nPKGj中文版v1.00,基於blastrock@GitHub PKGj v0.46，由5334032,Anarch13(百度貼吧-PSVita破解吧)修改漢化。遵循2-clause BSD授權，禁止用於任何形式的商業用途！\n生效中的配置信息:\nPSV游戲:{}\nPSV追加下載内容:{}\nPSP游戲:{}\nPSX游戲:{}\nPSM游戲:{}\n兼容包:{}\n自動更新:{} ",config.games_url,config.dlcs_url,config.psp_games_url,config.psx_games_url,config.psm_games_url,config.comppack_url,config.no_version_check?"禁用":"啓用").c_str(),{{"確定", [] {}},{"重置Config.txt",[] {config=pkgi_set_default_config();pkgi_save_config(config);}},{fmt::format("{}自动更新",config.no_version_check?"啓用":"禁用").c_str(),[] {config.no_version_check=!config.no_version_check;pkgi_save_config(config);}}});
+                    case MenuResultAbout:
+                        pkgi_dialog_question(fmt::format("关于\nPKGj中文版 v1.02, 源码基于GitHub开发者blastrock的PKGj v0.47, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!\n生效中的配置信息: \nPSV游戏: {}\nPSV追加下载内容: {}\nPSV主题: {}\nPSP游戏: {}\nPSX游戏: {}\nPSM游戏: {}\n兼容包: {}\n",
+                            config.games_url,
+                            config.dlcs_url,
+                            config.themes_url,
+                            config.psp_games_url,
+                            config.psx_games_url,
+                            config.psm_games_url,
+                            config.comppack_url).c_str(),
+                        {{"确定", [] {}},{"重置配置文件",[] {config=pkgi_set_default_config();pkgi_save_config(config);}},
+                        {fmt::format("{}自动更新",config.no_version_check?"启用":"禁用").c_str(),[] {config.no_version_check=!config.no_version_check;pkgi_save_config(config);}}});
                         break;
                     }
                 }
             }
+
 
             ImGui::EndFrame();
             ImGui::Render();
@@ -1228,7 +1303,7 @@ int main()
         LOGF("Error in main: {}", e.what());
         state = StateError;
         pkgi_snprintf(
-                error_state, sizeof(error_state), "致命錯誤: %s", e.what());
+                error_state, sizeof(error_state), "致命错误: %s", e.what());
 
         pkgi_input input;
         while (pkgi_update(&input))
