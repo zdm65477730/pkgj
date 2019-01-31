@@ -20,6 +20,9 @@ static constexpr char default_comppack_url[] = {
         0x73, 0x2f, 0x6e, 0x70, 0x73, 0x5f, 0x63, 0x6f, 0x6d, 0x70, 0x61,
         0x74, 0x69, 0x5f, 0x70, 0x61, 0x63, 0x6b, 0x73, 0x2f, 0x72, 0x61,
         0x77, 0x2f, 0x6d, 0x61, 0x73, 0x74, 0x65, 0x72, 0x2f, 0x00};
+static constexpr char default_psv_demos_url[] = "http://47.100.37.250/tsv_files/PSV_DEMOS.tsv";
+static constexpr char default_psv_themes_url[] = "http://47.100.37.250/tsv_files/PSV_THEMES.tsv";
+
 
 static char* skipnonws(char* text, char* end)
 {
@@ -131,9 +134,12 @@ static DbFilter parse_filter(char* value, uint32_t filter)
 }
 Config pkgi_set_default_config()
 {
-    Config config;
+    Config config{};
+
     config.games_url = default_psv_games_url;
     config.dlcs_url = default_psv_dlcs_url;
+    config.demos_url = default_psv_demos_url;
+    config.themes_url = default_psv_themes_url;
     config.psm_games_url = default_psm_games_url;
     config.psx_games_url = default_psx_games_url;
     config.psp_games_url = default_psp_games_url;
@@ -142,10 +148,9 @@ Config pkgi_set_default_config()
     config.order = SortAscending;
     config.filter = DbFilterAll;
     config.install_psp_psx_location = "ux0:";
-    config.firstopen = "0";
     return config;
-}
 
+}
 Config pkgi_load_config()
 {
     try
@@ -154,6 +159,8 @@ Config pkgi_load_config()
 
         config.games_url = default_psv_games_url;
         config.dlcs_url = default_psv_dlcs_url;
+        config.demos_url = default_psv_demos_url;
+        config.themes_url = default_psv_themes_url;
         config.psm_games_url = default_psm_games_url;
         config.psx_games_url = default_psx_games_url;
         config.psp_games_url = default_psp_games_url;
@@ -162,7 +169,6 @@ Config pkgi_load_config()
         config.order = SortAscending;
         config.filter = DbFilterAll;
         config.install_psp_psx_location = "ux0:";
-        config.firstopen = "0";
 
         auto const path =
                 fmt::format("{}/config.txt", pkgi_get_config_folder());
@@ -207,6 +213,10 @@ Config pkgi_load_config()
                 config.games_url = value;
             else if (pkgi_stricmp(key, "url_dlcs") == 0)
                 config.dlcs_url = value;
+            else if (pkgi_stricmp(key, "url_psv_demos") == 0)
+                config.demos_url = value;
+            else if (pkgi_stricmp(key, "url_psv_themes") == 0)
+                config.themes_url = value;
             else if (pkgi_stricmp(key, "url_psm_games") == 0)
                 config.psm_games_url = value;
             else if (pkgi_stricmp(key, "url_psx_games") == 0)
@@ -227,8 +237,6 @@ Config pkgi_load_config()
                 config.install_psp_as_pbp = 1;
             else if (pkgi_stricmp(key, "install_psp_psx_location") == 0)
                 config.install_psp_psx_location = value;
-            else if (pkgi_stricmp(key,"last_version")==0)
-                config.firstopen = value;
             else if (
                     pkgi_stricmp(key, "psm_disclaimer_yes_i_read_the_readme") ==
                     0)
@@ -240,7 +248,7 @@ Config pkgi_load_config()
     catch (const std::exception& e)
     {
         throw formatEx<std::runtime_error>(
-                "加載配置失敗:\n{}", e.what());
+                "加载配置失败:\n{}", e.what());
     }
 }
 
@@ -290,6 +298,19 @@ void pkgi_save_config(const Config& config)
                 sizeof(data) - len,
                 "url_dlcs %s\n",
                 config.dlcs_url.c_str());
+    if (!config.demos_url.empty() && config.demos_url != default_psv_demos_url)
+        len += pkgi_snprintf(
+                data + len,
+                sizeof(data) - len,
+                "url_psv_demos %s\n",
+                config.demos_url.c_str());
+    if (!config.themes_url.empty() &&
+        config.themes_url != default_psv_themes_url)
+        len += pkgi_snprintf(
+                data + len,
+                sizeof(data) - len,
+                "url_psv_themes %s\n",
+                config.themes_url.c_str());
     if (!config.psm_games_url.empty() &&
         config.psm_games_url != default_psm_games_url)
         len += pkgi_snprintf(
@@ -359,7 +380,7 @@ void pkgi_save_config(const Config& config)
         sep = ",";
     }
     len += pkgi_snprintf(data + len, sizeof(data) - len, "\n");
-    len += pkgi_snprintf(data + len, sizeof(data) - len, "last_version %s", config.firstopen);
+
     if (config.no_version_check)
     {
         len += pkgi_snprintf(
