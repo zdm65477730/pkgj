@@ -13,10 +13,12 @@ typedef enum
     MenuResultRefresh,
     MenuResultShowGames,
     MenuResultShowDlcs,
+    MenuResultShowDemos,
+    MenuResultShowThemes,
     MenuResultShowPsxGames,
     MenuResultShowPspGames,
     MenuResultShowPsmGames,
-    MenuAbout,
+    MenuResultAbout,
 } MenuResult;
 
 typedef struct Config Config;

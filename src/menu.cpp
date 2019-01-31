@@ -27,7 +27,7 @@ typedef enum
     MenuFilter,
     MenuRefresh,
     MenuShow,
-    MenuButton,
+    MenuAbout,
 } MenuType;
 
 typedef struct
@@ -41,29 +41,31 @@ static const MenuEntry menu_entries[] = {
         {MenuSearch, "搜索...", 0},
         {MenuSearchClear, PKGI_UTF8_CLEAR " 取消搜索", 0},
 
-        {MenuText, "排序順序:", 0},
-        {MenuSort, "游戲編號", SortByTitle},
-        {MenuSort, "發行區域", SortByRegion},
-        {MenuSort, "游戲名稱", SortByName},
-        {MenuSort, "游戲容量", SortBySize},
-        {MenuSort, "更新時間", SortByDate},
+        {MenuText, "排序顺序:", 0},
+        {MenuSort, "游戏编号", SortByTitle},
+        {MenuSort, "发行区域", SortByRegion},
+        {MenuSort, "游戏名称", SortByName},
+        {MenuSort, "游戏容量", SortBySize},
+        {MenuSort, "更新时间", SortByDate},
 
-        {MenuText, "篩選項:", 0},
-        {MenuFilter, "亞洲", DbFilterRegionASA},
-        {MenuFilter, "歐洲", DbFilterRegionEUR},
+        {MenuText, "筛选项:", 0},
+        {MenuFilter, "亚洲", DbFilterRegionASA},
+        {MenuFilter, "欧洲", DbFilterRegionEUR},
         {MenuFilter, "日本", DbFilterRegionJPN},
-        {MenuFilter, "美國", DbFilterRegionUSA},
-        {MenuFilter, "已安裝的游戲", DbFilterInstalled},
+        {MenuFilter, "美国", DbFilterRegionUSA},
+        {MenuFilter, "已安装的游戏", DbFilterInstalled},
 
-        {MenuRefresh, "刷新", 0},
+        {MenuRefresh, "刷新列表", 0},
 
-        {MenuShow, "顯示PSV游戲", 1},
-        {MenuShow, "顯示PSV追加下載内容", 2},
-        {MenuShow, "顯示PSX游戲", 4},
-        {MenuShow, "顯示PSP游戲", 8},
-        {MenuShow, "顯示PSM游戲", 16},
+        {MenuShow, "显示PSV游戏", 1},
+        {MenuShow, "显示PSV追加下载内容", 2},
+        {MenuShow, "显示PSV体验版游戏", 64},
+        {MenuShow, "显示PSV主题", 32},
+        {MenuShow, "显示PSX游戏", 4},
+        {MenuShow, "显示PSP游戏", 8},
+        {MenuShow, "显示 PSM游戏", 16},
 
-        {MenuButton, "关于", 0},
+        {MenuAbout, "关于PKGj汉化版", 0},
 };
 
 int pkgi_menu_is_open(void)
@@ -153,8 +155,10 @@ int pkgi_do_menu(pkgi_input* input)
                 menu_selected++;
             }
         } while (menu_entries[menu_selected].type == MenuText ||
-                 (menu_entries[menu_selected].type == MenuSearchClear && !menu_search_clear) ||
-                 (menu_entries[menu_selected].type == MenuShow && !(menu_entries[menu_selected].value & menu_allow_refresh)));
+                 (menu_entries[menu_selected].type == MenuSearchClear &&
+                  !menu_search_clear) ||
+                 (menu_entries[menu_selected].type == MenuShow &&
+                  !(menu_entries[menu_selected].value & menu_allow_refresh)));
     }
 
     if (input->pressed & pkgi_cancel_button())
@@ -191,12 +195,6 @@ int pkgi_do_menu(pkgi_input* input)
             menu_delta = -1;
             return 1;
         }
-        else if (type == MenuButton)
-        {
-            menu_result = MenuAbout;
-            menu_delta = -1;
-            return 1;
-        }
         else if (type == MenuShow)
         {
             switch (menu_entries[menu_selected].value)
@@ -215,6 +213,12 @@ int pkgi_do_menu(pkgi_input* input)
                 break;
             case 16:
                 menu_result = MenuResultShowPsmGames;
+                break;
+            case 32:
+                menu_result = MenuResultShowThemes;
+                break;
+            case 64:
+                menu_result = MenuResultShowDemos;
                 break;
             }
 
@@ -238,6 +242,12 @@ int pkgi_do_menu(pkgi_input* input)
         else if (type == MenuFilter)
         {
             menu_config.filter ^= menu_entries[menu_selected].value;
+        }
+        else if (type == MenuAbout)
+        {
+            menu_result = MenuResultAbout;
+            menu_delta = -1;
+            return 1;
         }
     }
 
@@ -281,7 +291,7 @@ int pkgi_do_menu(pkgi_input* input)
 
         char text[64];
         if (type == MenuSearch || type == MenuSearchClear || type == MenuText ||
-            type == MenuRefresh || type == MenuShow || type == MenuButton)
+            type == MenuRefresh || type == MenuShow || type == MenuAbout)
         {
             pkgi_strncpy(text, sizeof(text), entry->text);
         }
