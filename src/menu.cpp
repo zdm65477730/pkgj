@@ -63,7 +63,8 @@ static const MenuEntry menu_entries[] = {
         {MenuShow, "显示PSV主题", 32},
         {MenuShow, "显示PSX游戏", 4},
         {MenuShow, "显示PSP游戏", 8},
-        {MenuShow, "显示 PSM游戏", 16},
+        {MenuShow, "显示PSP追加下载内容", 128},
+        {MenuShow, "显示PSM游戏", 16},
 
         {MenuAbout, "关于PKGj中文版", 0},
 };
@@ -219,6 +220,9 @@ int pkgi_do_menu(pkgi_input* input)
                 break;
             case 64:
                 menu_result = MenuResultShowDemos;
+                break;
+            case 128:
+                menu_result = MenuResultShowPspDlcs;
                 break;
             }
 

@@ -18,6 +18,7 @@ typedef enum
     MenuResultShowPsxGames,
     MenuResultShowPspGames,
     MenuResultShowPsmGames,
+    MenuResultShowPspDlcs,
     MenuResultAbout,
 } MenuResult;
 
