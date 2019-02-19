@@ -242,19 +242,19 @@ void scedownload_start_with_rif(
 
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "下载更改状态失败: {:#08x}",
+                "SceDownload函数状态变更失败: {:#08x}",
                 static_cast<uint32_t>(res));
     if (result < 0)
         throw formatEx<std::runtime_error>(
-                "下载更改状态结果失败: {:#08x}",
+                "SceDownload函数状态变更返回值错误: {:#08x}",
                 static_cast<uint32_t>(result));
     if (bgdlid < 0)
         throw formatEx<std::runtime_error>(
-                "下载更改后台下载编码状态失败: {:#08x}",
+                "SceDownload函数更改后台下载ID失败: {:#08x}",
                 static_cast<uint32_t>(res));
     if (reinterpret_cast<intptr_t>(params.init.addr_DC0) < 0)
         throw formatEx<std::runtime_error>(
-                "下载更改DC0状态失败: {:#08x}",
+                "SceDownload函数更改DC0状态失败: {:#08x}",
                 reinterpret_cast<uintptr_t>(params.init.addr_DC0));
 
     result = 0;
@@ -269,11 +269,11 @@ void scedownload_start_with_rif(
             sceDownloadObj->class_header->func_table, 0x12340007, 0, 0, params);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "下载第二个更改状态失败: {:#08x}",
+                "SceDownload函数第二次状态变更失败: {:#08x}",
                 static_cast<uint32_t>(res));
     if (result < 0)
         throw formatEx<std::runtime_error>(
-                "下载第二个更改状态结果失败: {:#08x}",
+                "SceDownload函数第二次状态变更返回值错误: {:#08x}",
                 static_cast<uint32_t>(result));
     buf_dc0.clear();
     buf_2e0.clear();
