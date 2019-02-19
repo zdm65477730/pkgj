@@ -1191,8 +1191,9 @@ int Download::pkgi_download(
             content_type != CONTENT_TYPE_PSP_GAME &&
             content_type != CONTENT_TYPE_PSP_MINI_GAME &&
             content_type != CONTENT_TYPE_PSM_GAME &&
+            content_type != CONTENT_TYPE_PSP_GAME_ALT &&
             content_type != CONTENT_TYPE_PSM_GAME_ALT)
-            content_type != CONTENT_TYPE_PSP_GAME_ALT ||
+            
         {
             if (!create_stat())
                 return 0;

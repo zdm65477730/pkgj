@@ -9,7 +9,7 @@ static constexpr char default_psv_games_url[] = "http://47.100.37.250/tsv_files/
 static constexpr char default_psv_dlcs_url[] = "http://47.100.37.250/tsv_files/PSV_DLCS.tsv";
 static constexpr char default_psx_games_url[] = "http://47.100.37.250/tsv_files/PSX_GAMES.tsv";
 static constexpr char default_psp_dlcs_url[] = "http://47.100.37.250/tsv_files/PSP_DLCS.tsv";
-static constexpr char default_psm_games_url[] = "http://47.100.37.250/tsv_files/PSM_GAMES.tsv";
+static constexpr char default_psp_games_url[] = "http://47.100.37.250/tsv_files/PSP_GAMES.tsv";
 static constexpr char default_psm_games_url[] = "http://47.100.37.250/tsv_files/PSM_GAMES.tsv";
 static constexpr char default_comppack_url[] = {
         0x68, 0x74, 0x74, 0x70, 0x3a, 0x2f, 0x2f, 0x70, 0x72, 0x6f, 0x78,
