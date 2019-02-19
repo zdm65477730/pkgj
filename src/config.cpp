@@ -8,7 +8,8 @@
 static constexpr char default_psv_games_url[] = "http://47.100.37.250/tsv_files/PSV_GAMES_SC.tsv";
 static constexpr char default_psv_dlcs_url[] = "http://47.100.37.250/tsv_files/PSV_DLCS.tsv";
 static constexpr char default_psx_games_url[] = "http://47.100.37.250/tsv_files/PSX_GAMES.tsv";
-static constexpr char default_psp_games_url[] = "http://47.100.37.250/tsv_files/PSP_GAMES.tsv";
+static constexpr char default_psp_dlcs_url[] = "http://47.100.37.250/tsv_files/PSP_DLCS.tsv";
+static constexpr char default_psm_games_url[] = "http://47.100.37.250/tsv_files/PSM_GAMES.tsv";
 static constexpr char default_psm_games_url[] = "http://47.100.37.250/tsv_files/PSM_GAMES.tsv";
 static constexpr char default_comppack_url[] = {
         0x68, 0x74, 0x74, 0x70, 0x3a, 0x2f, 0x2f, 0x70, 0x72, 0x6f, 0x78,
@@ -144,6 +145,7 @@ Config pkgi_set_default_config()
     config.psx_games_url = default_psx_games_url;
     config.psp_games_url = default_psp_games_url;
     config.comppack_url = default_comppack_url;
+    config.psp_dlcs_url = default_psp_dlcs_url;
     config.sort = SortByName;
     config.order = SortAscending;
     config.filter = DbFilterAll;
@@ -164,6 +166,7 @@ Config pkgi_load_config()
         config.psm_games_url = default_psm_games_url;
         config.psx_games_url = default_psx_games_url;
         config.psp_games_url = default_psp_games_url;
+        config.psp_dlcs_url = default_psp_dlcs_url;
         config.comppack_url = default_comppack_url;
         config.sort = SortByName;
         config.order = SortAscending;
@@ -223,6 +226,8 @@ Config pkgi_load_config()
                 config.psx_games_url = value;
             else if (pkgi_stricmp(key, "url_psp_games") == 0)
                 config.psp_games_url = value;
+            else if (pkgi_stricmp(key, "url_psp_dlcs") == 0)
+                config.psp_dlcs_url = value;
             else if (pkgi_stricmp(key, "url_comppack") == 0)
                 config.comppack_url = value;
             else if (pkgi_stricmp(key, "sort") == 0)
