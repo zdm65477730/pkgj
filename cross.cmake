@@ -43,6 +43,7 @@ add_assets(assets
 add_executable(pkgj
   ${assets}
   src/aes128.cpp
+  src/bgdl.cpp
   src/comppackdb.cpp
   src/config.cpp
   src/db.cpp
@@ -76,6 +77,7 @@ target_link_libraries(pkgj
   CONAN_PKG::cereal
   CONAN_PKG::libzip
   CONAN_PKG::imgui
+  CONAN_PKG::taihen
   png
   z
   m
