@@ -9,7 +9,7 @@ PKGj是一款搭配NoNpDRM、NoNpPSM使用的PSV游戏下载器。（中文俗�
 * **自动化** 下载、解压缩、安装、刷新livearea全部都会自动完成.
 * **队列** 多任务下载支持.
 * **文件格式** TSV格式文件列表（标准csv格式）.
-* **安装** 可以安装PSV游戏、DLC、PSP游戏等等.
+* **安装** 可以安装PSV游戏、DLC、演示版，PSP游戏、DLC，PSX、PSM游戏和主题.
 
 小缺陷:
 * **无法实现后台下载** - 下载会在软件关闭或vita休眠时停止.
@@ -26,6 +26,7 @@ pkgj 读取 `ux0:pkgj/config.txt` 或 `ur0:pkgj/config.txt`.作为配置文件
 | `url_dlcs <URL>` | The URL of the PS Vita DLC list |
 | `url_psm_games <URL>` | The URL of the PS Mobile list (see Q&A) |
 | `url_psp_games <URL>` | The URL of the PSP game list |
+| `url_psp_dlcs <URL>` | The URL of the PSP DLC list |
 | `url_psx_games <URL>` | The URL of the PSX game list |
 | `url_comppack <URL>` | The URL of the PS Vita compatibility pack list |
 | `install_psp_as_pbp 1` | Install PSP games as EBOOT.EBP files instead of ISO files (see Q&A) |
