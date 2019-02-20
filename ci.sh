@@ -2,7 +2,7 @@
 
 set -xe
 
-rm -fr ci/build ci/buildhost
+#rm -fr ci/build ci/buildhost
 
 cd ci
 
