@@ -929,7 +929,7 @@ void pkgi_do_tail(Downloader& downloader)
             else if (item && item->presence != PresenceInstalled)
                 bottom_text += fmt::format("{} 安装 ", pkgi_get_ok_str());
         }
-        bottom_text += PKGI_UTF8_T " 菜单START关于";
+        bottom_text += PKGI_UTF8_T " 菜单 START关于";
     }
 
     pkgi_clip_set(
