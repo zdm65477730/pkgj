@@ -20,7 +20,8 @@ void pkgi_dialog_message(const char* text, int allow_close = 1);
 void pkgi_dialog_error(const char* text);
 void pkgi_dialog_question(
         const std::string& text, const std::vector<Response>& responses);
-
+void pkgi_dialog_about(
+        const std::string& text, const std::vector<Response>& responses);
 void pkgi_dialog_close();
 
 void pkgi_do_dialog();
