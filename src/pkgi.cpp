@@ -443,8 +443,11 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
                             configNode->psx_games_url,
                             configNode->psm_games_url,
                             configNode->comppack_url).c_str(),
-                        {{"确定", [] {}},{"重置配置文件",[] {Config temp=pkgi_set_default_config();pkgi_save_config(temp);}},
-                        {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}}});
+                        {
+                            {"确定", [] {}},
+                            {"重置配置文件",[] {Config temp=pkgi_set_default_config();pkgi_save_config(temp);}},
+                            {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[configNode] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}}
+                        });
             return;
         }
     }
