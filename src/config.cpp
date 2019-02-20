@@ -137,8 +137,6 @@ Config pkgi_set_default_config()
 {
     Config config{};
 
-    bool _refood_installed = pkgi_file_exists("ur0:tai/keys.bin");
-
     config.games_url = default_psv_games_url;
     config.dlcs_url = default_psv_dlcs_url;
     config.demos_url = default_psv_demos_url;
