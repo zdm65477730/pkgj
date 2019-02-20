@@ -24,6 +24,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(VITA_APP_NAME "PKGj")
 set(VITA_TITLEID  "PKGJ00001")
 set(VITA_VERSION  "1.05")
+set(VITA_VERSION_ORI  "0.49")
 
 option(PKGI_ENABLE_LOGGING "enables debug logging over udp multicast" OFF)
 
@@ -32,6 +33,7 @@ if(PKGI_ENABLE_LOGGING)
 endif()
 
 add_definitions(-DPKGI_VERSION="${VITA_VERSION}" -D_GNU_SOURCE)
+add_definitions(-DPKGI_VERSION_ORI="${VITA_VERSION_ORI}" -D_GNU_SOURCE)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -fvisibility=hidden")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -fvisibility=hidden")
 
