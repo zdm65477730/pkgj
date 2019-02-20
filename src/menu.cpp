@@ -288,6 +288,17 @@ int pkgi_do_menu(pkgi_input* input)
             }
         }
         *///压缩菜单空间
+        if (type == MenuSearchClear && !menu_search_clear)
+        {
+            continue;
+        }
+        if (type == MenuShow)
+        {
+            if (!(entry->value & menu_allow_refresh))
+            {
+                continue;
+            }
+        }
         uint32_t color = menu_selected == i ? PKGI_COLOR_TEXT_MENU_SELECTED
                                             : PKGI_COLOR_TEXT_MENU;
 
