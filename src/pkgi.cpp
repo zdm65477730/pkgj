@@ -34,7 +34,7 @@ extern "C"
 #define PKGI_UPDATE_URL \
     "https://api.github.com/repos/blastrock/pkgj/releases/latest"
 #define VERSION "1.04"
-
+#define VERSION_ORI "0.48"
 namespace
 {
 typedef enum
@@ -339,7 +339,7 @@ void pkgi_refresh_list()
     pkgi_start_thread("refresh_thread", &pkgi_refresh_thread);
 }
 
-void pkgi_do_main(Downloader& downloader, pkgi_input* input)
+void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
 {
     int col_titleid = 0;
     int col_region = col_titleid + pkgi_text_width("PCSE00000") +
@@ -429,6 +429,23 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
                     selected_item = db_count - 1;
                 }
             }
+        }
+        if (input->active & PKGI_BUTTON_START)
+        {
+            pkgi_dialog_about(fmt::format("关于\nPKGj中文版 v{}, 源码基于GitHub开发者blastrock的PKGj v{}, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!\n生效中的配置信息: \nPSV游戏: {}\nPSV追加下载内容: {}\nPSV主题: {}\nPSP游戏: {}\nPSP追加下载内容: {}\nPSX游戏: {}\nPSM游戏: {}\n兼容包: {}\n",
+                            VERSION,
+                            VERSION_ORI,
+                            configNode->games_url,
+                            configNode->dlcs_url,
+                            configNode->themes_url,
+                            configNode->psp_games_url,
+                            configNode->psp_dlcs_url,
+                            configNode->psx_games_url,
+                            configNode->psm_games_url,
+                            configNode->comppack_url).c_str(),
+                        {{"确定", [] {}},{"重置配置文件",[] {Config temp=pkgi_set_default_config();pkgi_save_config(temp);}},
+                        {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}}});
+            return;
         }
     }
 
@@ -1187,8 +1204,7 @@ int main()
             case StateMain:
                 pkgi_do_main(
                         downloader,
-                        pkgi_dialog_is_open() || pkgi_menu_is_open() ? NULL
-                                                                     : &input);
+                        pkgi_dialog_is_open() || pkgi_menu_is_open() ? NULL : &input, &config);
                 break;
             }
 
@@ -1289,18 +1305,7 @@ int main()
                         pkgi_set_mode(ModePspDlcs);
                         break;
                     case MenuResultAbout:
-                        pkgi_dialog_about(fmt::format("关于\nPKGj中文版 v{}, 源码基于GitHub开发者blastrock的PKGj v0.48, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!\n生效中的配置信息: \nPSV游戏: {}\nPSV追加下载内容: {}\nPSV主题: {}\nPSP游戏: {}\nPSP追加下载内容: {}\nPSX游戏: {}\nPSM游戏: {}\n兼容包: {}\n",
-                            VERSION,
-                            config.games_url,
-                            config.dlcs_url,
-                            config.themes_url,
-                            config.psp_games_url,
-                            config.psp_dlcs_url,
-                            config.psx_games_url,
-                            config.psm_games_url,
-                            config.comppack_url).c_str(),
-                        {{"确定", [] {}},{"重置配置文件",[] {config=pkgi_set_default_config();pkgi_save_config(config);}},
-                        {fmt::format("{}自动更新",config.no_version_check?"启用":"禁用").c_str(),[] {config.no_version_check=!config.no_version_check;pkgi_save_config(config);}}});
+                        
                         break;
                     }
                 }
