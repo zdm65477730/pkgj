@@ -268,7 +268,7 @@ int pkgi_do_menu(pkgi_input* input)
         const MenuEntry* entry = menu_entries + i;
 
         MenuType type = entry->type;
-        if (type == MenuText)
+        /*if (type == MenuText)
         {
             y += font_height / 2;
         }
@@ -287,7 +287,7 @@ int pkgi_do_menu(pkgi_input* input)
                 continue;
             }
         }
-
+        *///压缩菜单空间
         uint32_t color = menu_selected == i ? PKGI_COLOR_TEXT_MENU_SELECTED
                                             : PKGI_COLOR_TEXT_MENU;
 
