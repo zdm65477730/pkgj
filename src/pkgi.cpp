@@ -432,7 +432,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
         }
         if (input->active & PKGI_BUTTON_START)
         {
-            pkgi_dialog_about(fmt::format("关于\nPKGj中文版 v{}, 源码基于GitHub开发者blastrock的PKGj v{}, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!\n生效中的配置信息: \nPSV游戏: {}\nPSV追加下载内容: {}\nPSV主题: {}\nPSP游戏: {}\nPSP追加下载内容: {}\nPSX游戏: {}\nPSM游戏: {}\n兼容包: {}\n",
+            pkgi_dialog_about(fmt::format("PKGj中文版 v{}, 源码基于GitHub开发者blastrock的PKGj v{}, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!\n生效中的配置信息: \nPSV游戏: {}\nPSV追加下载内容: {}\nPSV主题: {}\nPSP游戏: {}\nPSP追加下载内容: {}\nPSX游戏: {}\nPSM游戏: {}\n兼容包: {}\n",
                             VERSION,
                             VERSION_ORI,
                             configNode->games_url,
@@ -927,7 +927,7 @@ void pkgi_do_tail(Downloader& downloader)
             else if (item && item->presence != PresenceInstalled)
                 bottom_text += fmt::format("{} 安装 ", pkgi_get_ok_str());
         }
-        bottom_text += PKGI_UTF8_T " 菜单";
+        bottom_text += PKGI_UTF8_T " 菜单START关于";
     }
 
     pkgi_clip_set(
@@ -1303,9 +1303,6 @@ int main()
                         break;
                     case MenuResultShowPspDlcs:
                         pkgi_set_mode(ModePspDlcs);
-                        break;
-                    case MenuResultAbout:
-                        
                         break;
                     }
                 }

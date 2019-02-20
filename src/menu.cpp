@@ -27,7 +27,6 @@ typedef enum
     MenuFilter,
     MenuRefresh,
     MenuShow,
-    MenuAbout,
 } MenuType;
 
 typedef struct
@@ -65,8 +64,6 @@ static const MenuEntry menu_entries[] = {
         {MenuShow, "显示PSP游戏", 8},
         {MenuShow, "显示PSP追加下载内容", 128},
         {MenuShow, "显示PSM游戏", 16},
-
-        {MenuAbout, "关于PKGj中文版", 0},
 };
 
 int pkgi_menu_is_open(void)
@@ -247,12 +244,6 @@ int pkgi_do_menu(pkgi_input* input)
         {
             menu_config.filter ^= menu_entries[menu_selected].value;
         }
-        else if (type == MenuAbout)
-        {
-            menu_result = MenuResultAbout;
-            menu_delta = -1;
-            return 1;
-        }
     }
 
     if (menu_width != PKGI_MENU_WIDTH)
@@ -306,7 +297,7 @@ int pkgi_do_menu(pkgi_input* input)
 
         char text[64];
         if (type == MenuSearch || type == MenuSearchClear || type == MenuText ||
-            type == MenuRefresh || type == MenuShow || type == MenuAbout)
+            type == MenuRefresh || type == MenuShow)
         {
             pkgi_strncpy(text, sizeof(text), entry->text);
         }
