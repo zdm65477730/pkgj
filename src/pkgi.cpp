@@ -19,6 +19,7 @@ extern "C"
 #include "utils.hpp"
 #include "vitahttp.hpp"
 #include "zrif.hpp"
+#include "vita.hpp"
 #include <imgui_internal.h>
 
 #include <vita2d.h>
@@ -298,12 +299,12 @@ void pkgi_psm_enable(Config * configNode)
 {
     if (configNode->psm_readme_disclaimer)
     {
-        pkgi_dialog_error("错误:PSM已经配置为启用!")
+        pkgi_dialog_error("错误:PSM已经配置为启用!");
     }
     else
     {
     pkgi_dialog_question("请仔细阅读NoPsmDrm的readme文档并保证愿意承担本功能带来的一切风险",
-                    {{"启用PSM功能",[] {configNode->psm_readme_disclaimer=1;pkgi_save_config(*configNode);}},
+                    {{"启用PSM功能",[configNode] {configNode->psm_readme_disclaimer=1;pkgi_save_config(*configNode);}},
                     {"取消", [] {}}});
     }
 }
