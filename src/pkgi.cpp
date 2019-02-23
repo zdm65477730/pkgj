@@ -298,7 +298,7 @@ void pkgi_psm_enable(Config * configNode)
 {
     if (configNode->psm_readme_disclaimer)
     {
-        pkgi_dialog_error("PSM已经配置为启用")
+        pkgi_dialog_error("错误:PSM已经配置为启用!")
     }
     else
     {
@@ -308,6 +308,18 @@ void pkgi_psm_enable(Config * configNode)
     }
 }
 
+void pkgi_reset_all(void)
+{
+    pkgi_dialog_question("即将清除所有数据缓存,是否确认?",
+                    {
+                        {"取消",[] {}},
+                        {"取消",[] {}},
+                        {"确认",[] {pkgi_delete_dir(pkgi_get_config_folder());}},
+                    });
+    pkgi_dialog_error("程序即将退出");
+    pkgi_end();
+    exit(0);
+}
 void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
 {
     if (size <= 0)
@@ -444,22 +456,15 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
         }
         if (input->active & PKGI_BUTTON_START)
         {
-            pkgi_dialog_about(fmt::format("PKGj中文版 v{}, 源码基于GitHub开发者blastrock的PKGj v{}, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!\n生效中的配置信息: \nPSV游戏: {}\nPSV追加下载内容: {}\nPSV主题: {}\nPSP游戏: {}\nPSP追加下载内容: {}\nPSX游戏: {}\nPSM游戏: {}\n兼容包: {}\n",
+            pkgi_dialog_about(fmt::format("PKGj中文版 v{}, 源码基于GitHub开发者blastrock的PKGj v{}, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!",
                             PKGI_VERSION,
-                            PKGI_VERSION_ORI,
-                            configNode->games_url,
-                            configNode->dlcs_url,
-                            configNode->themes_url,
-                            configNode->psp_games_url,
-                            configNode->psp_dlcs_url,
-                            configNode->psx_games_url,
-                            configNode->psm_games_url,
-                            configNode->comppack_url).c_str(),
+                            PKGI_VERSION_ORI).c_str(),
                         {
                             {"确定", [] {}},
                             {"重置配置文件",[] {Config temp=pkgi_set_default_config();pkgi_save_config(temp);}},
                             {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[configNode] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}},
                             {"启用PSM功能", [configNode] {pkgi_psm_enable(configNode);}},
+                            {"清除PKGj缓存",[]{pkgi_reset_all()}},
                         });
             return;
         }
