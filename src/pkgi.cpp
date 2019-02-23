@@ -315,11 +315,8 @@ void pkgi_reset_all(void)
                     {
                         {"取消",[] {}},
                         {"取消",[] {}},
-                        {"确认",[] {pkgi_delete_dir(pkgi_get_config_folder());}},
+                        {"确认",[] {pkgi_delete_dir(pkgi_get_config_folder());pkgi_dialog_error("程序即将退出");pkgi_end();exit(0);}},
                     });
-    pkgi_dialog_error("程序即将退出");
-    pkgi_end();
-    exit(0);
 }
 void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
 {
