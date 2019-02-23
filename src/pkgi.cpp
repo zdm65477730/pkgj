@@ -294,6 +294,19 @@ void pkgi_install_package(Downloader& downloader, DbItem* item)
     pkgi_start_download(downloader, *item);
     item->presence = PresenceUnknown;
 }
+void pkgi_psm_enable(Config * configNode)
+{
+    if (configNode->psm_readme_disclaimer)
+    {
+        pkgi_dialog_error("PSM已经配置为启用")
+    }
+    else
+    {
+    pkgi_dialog_question("请仔细阅读NoPsmDrm的readme文档并保证愿意承担本功能带来的一切风险",
+                    {{"启用PSM功能",[] {configNode->psm_readme_disclaimer=1;pkgi_save_config(*configNode);}},
+                    {"取消", [] {}}});
+    }
+}
 
 void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
 {
@@ -445,7 +458,8 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
                         {
                             {"确定", [] {}},
                             {"重置配置文件",[] {Config temp=pkgi_set_default_config();pkgi_save_config(temp);}},
-                            {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[configNode] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}}
+                            {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[configNode] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}},
+                            {"启用PSM功能", [configNode] {pkgi_psm_enable(configNode);}},
                         });
             return;
         }
