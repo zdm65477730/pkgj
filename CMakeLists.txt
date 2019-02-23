@@ -23,7 +23,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(VITA_APP_NAME "PKGj")
 set(VITA_TITLEID  "PKGJ00001")
-set(VITA_VERSION  "1.05")
+set(VITA_VERSION  "1.06")
 set(VITA_VERSION_ORI  "0.49")
 
 option(PKGI_ENABLE_LOGGING "enables debug logging over udp multicast" OFF)

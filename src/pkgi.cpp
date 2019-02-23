@@ -314,8 +314,7 @@ void pkgi_reset_all(void)
     pkgi_dialog_question("即将清除所有数据缓存,是否确认?",
                     {
                         {"取消",[] {}},
-                        {"取消",[] {}},
-                        {"确认",[] {pkgi_delete_dir(pkgi_get_config_folder());pkgi_dialog_error("程序即将退出");pkgi_end();exit(0);}},
+                        {"确认",[] {pkgi_delete_dir(pkgi_get_config_folder());pkgi_end();exit(0);}},
                     });
 }
 void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
@@ -462,7 +461,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
                             {"重置配置文件",[] {Config temp=pkgi_set_default_config();pkgi_save_config(temp);}},
                             {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[configNode] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}},
                             {"启用PSM功能", [configNode] {pkgi_psm_enable(configNode);}},
-                            {"清除PKGj缓存",[]{pkgi_reset_all()}},
+                            {"清除PKGj缓存",[]{pkgi_reset_all();}},
                         });
             return;
         }
