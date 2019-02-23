@@ -45,7 +45,7 @@ static const char* pkgi_mode_to_file_name(Mode mode)
     switch (mode)
     {
     case ModeGames:
-        return "titles_psvgames.tsv";
+        return "titles_psvgames_CN.tsv";
     case ModeDlcs:
         return "titles_psvdlcs.tsv";
     case ModeDemos:
