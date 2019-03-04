@@ -84,7 +84,7 @@ void update_thread()
 
         LOGF("last version is {}", last_version);
 
-        if (last_version != PKGI_VERSION)
+        if (last_version.compare(PKGI_VERSION)<0)
         {
             LOG("new version available");
 
