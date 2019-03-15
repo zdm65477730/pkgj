@@ -975,7 +975,7 @@ int Download::download_files(void)
 
         if (enc_offset + item_offset + encrypted_offset != download_offset)
             throw formatEx<DownloadError>(
-                    "PKG文件不受支持, 文件顺序错误, "
+                    "PKG文件不受支持, 文件偏移值错误, "
                     "预期: {}, 实际: {}",
                     enc_offset + item_offset + encrypted_offset,
                     +download_offset);
@@ -991,6 +991,8 @@ int Download::download_files(void)
             {
                 if (item_name == "USRDIR/CONTENT/EBOOT.PBP")
                     download_file_content_to_iso(item_size);
+                else
+                    skip_to_file_offset(encrypted_size);
             }
             else if (item_name != "USRDIR/CONTENT/DOCUMENT.DAT" &&
                     item_name != "USRDIR/CONTENT/DOCINFO.EDAT" &&
