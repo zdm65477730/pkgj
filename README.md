@@ -1,4 +1,4 @@
-# pkgj
+# PKGj
 
 PKGj是一款搭配NoNpDRM、NoNpPSM使用的PSV游戏下载器。（中文俗称黑商店）
 
