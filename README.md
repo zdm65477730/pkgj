@@ -2,6 +2,10 @@
 
 PKGj是一款搭配NoNpDRM、NoNpPSM使用的PSV游戏下载器。（中文俗称黑商店）
 
+# 停止维护！
+
+由于原项目已停止更新，PKGj中文版已于2019/9/2同步最后一次更新的代码并停止维护。除非出现重大bug否则将不再更新。若有需要欢迎folk并自行修改编译。
+
 # 功能
 
 * **简单** 所见即所得.
@@ -30,6 +34,9 @@ pkgj 读取 `ux0:pkgj/config.txt` 或 `ur0:pkgj/config.txt`.作为配置文件
 | `install_psp_psx_location uma0:` | Install PSP and PSX games on `uma0:` |
 | `no_version_check 1` | Do not check for update when starting PKGj |
 
+(1.09+)
+pkgj 读取 `ux0:pkgj/config_cn.json` 或 `ur0:pkgj/config_cn.json`.作为配置文件
+若文件不存在PKGj将会采用默认配置（1.00\[0.46\]+）
 
 
 # 许可协议

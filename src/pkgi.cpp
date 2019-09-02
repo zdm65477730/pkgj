@@ -33,7 +33,7 @@ extern "C"
 #include <cstring>
 
 #define PKGI_UPDATE_URL \
-    "https://api.github.com/repos/blastrock/pkgj/releases/latest"
+    "https://api.github.com/repos/guch8017/pkgj/releases/latest"
 
 namespace
 {
@@ -309,6 +309,17 @@ void pkgi_psm_enable(Config * configNode)
     }
 }
 
+void pkgi_repo_select(Config & config){
+    std::vector<struct Response> vecList;
+    for(uint i=0;i<config.repo_list.size();i++){
+        struct Response tmpRsp;
+        tmpRsp.text = config.repo_list[i];
+        tmpRsp.callback = [&,i]{config.repo = i;pkgi_save_config(config);};
+        vecList.push_back(tmpRsp);
+    }
+    pkgi_dialog_question("Repo List, Select a tsv files repo",vecList);
+}
+
 void pkgi_reset_all(void)
 {
     pkgi_dialog_question("即将清除所有数据缓存,是否确认?",
@@ -458,7 +469,8 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
                             PKGI_VERSION_ORI).c_str(),
                         {
                             {"确定", [] {}},
-                            {"重置配置文件",[] {Config temp=pkgi_set_default_config();pkgi_save_config(temp);}},
+                            {"数据源", [&] {pkgi_repo_select(config);}},
+                            {"重置配置文件",[] {Config temp=pkgi_load_config(1);}},
                             {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[configNode] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}},
                             {"启用PSM功能", [configNode] {pkgi_psm_enable(configNode);}},
                             {"清除PKGj缓存",[]{pkgi_reset_all();}},
@@ -1118,7 +1130,7 @@ int main()
 
         LOG("started");
 
-        config = pkgi_load_config();
+        config = pkgi_load_config(0);
         pkgi_dialog_init();
 
         font_height = pkgi_text_height("M");

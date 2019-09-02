@@ -1,16 +1,21 @@
 #include "config.hpp"
 
 #include <fmt/format.h>
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
 
 #include "file.hpp"
 #include "pkgi.hpp"
 
-static constexpr char default_psv_games_url[] = "http://47.100.37.250/tsv_files/PSV_GAMES_SC.tsv";
-static constexpr char default_psv_dlcs_url[] = "http://47.100.37.250/tsv_files/PSV_DLCS.tsv";
-static constexpr char default_psx_games_url[] = "http://47.100.37.250/tsv_files/PSX_GAMES.tsv";
-static constexpr char default_psp_dlcs_url[] = "http://47.100.37.250/tsv_files/PSP_DLCS.tsv";
-static constexpr char default_psp_games_url[] = "http://47.100.37.250/tsv_files/PSP_GAMES.tsv";
-static constexpr char default_psm_games_url[] = "http://47.100.37.250/tsv_files/PSM_GAMES.tsv";
+static const std::string PSV_GAMES_POSTFIX = "PSV_GAMES_SC.tsv";
+static const std::string PSV_DLCS_POSTFIX = "PSV_DLCS.tsv";
+static const std::string PSX_GAMES_POSTFIX = "PSX_GAMES.tsv";
+static const std::string PSP_DLCS_POSTFIX = "PSP_DLCS.tsv";
+static const std::string PSP_GAMES_POSTFIX = "PSP_GAMES.tsv";
+static const std::string PSM_GAMES_POSTFIX = "PSM_GAMES.tsv";
+static const std::string PSV_DEMOS_POSTFIX = "PSV_DEMOS.tsv";
+static const std::string PSV_THEMES_POSTFIX = "PSV_THEMES.tsv";
 static constexpr char default_comppack_url[] = {
         0x68, 0x74, 0x74, 0x70, 0x3a, 0x2f, 0x2f, 0x70, 0x72, 0x6f, 0x78,
         0x79, 0x2e, 0x6e, 0x6f, 0x70, 0x61, 0x79, 0x73, 0x74, 0x61, 0x74,
@@ -21,27 +26,8 @@ static constexpr char default_comppack_url[] = {
         0x73, 0x2f, 0x6e, 0x70, 0x73, 0x5f, 0x63, 0x6f, 0x6d, 0x70, 0x61,
         0x74, 0x69, 0x5f, 0x70, 0x61, 0x63, 0x6b, 0x73, 0x2f, 0x72, 0x61,
         0x77, 0x2f, 0x6d, 0x61, 0x73, 0x74, 0x65, 0x72, 0x2f, 0x00};
-static constexpr char default_psv_demos_url[] = "http://47.100.37.250/tsv_files/PSV_DEMOS.tsv";
-static constexpr char default_psv_themes_url[] = "http://47.100.37.250/tsv_files/PSV_THEMES.tsv";
 
 
-static char* skipnonws(char* text, char* end)
-{
-    while (text < end && *text != ' ' && *text != '\n' && *text != '\r')
-    {
-        text++;
-    }
-    return text;
-}
-
-static char* skipws(char* text, char* end)
-{
-    while (text < end && (*text == ' ' || *text == '\n' || *text == '\r'))
-    {
-        text++;
-    }
-    return text;
-}
 
 static DbSort parse_sort(const char* value, DbSort sort)
 {
@@ -87,10 +73,16 @@ static DbSortOrder parse_order(const char* value, DbSortOrder order)
     }
 }
 
-static DbFilter parse_filter(char* value, uint32_t filter)
+static DbFilter parse_filter(const char* cvalue, uint32_t filter)
 {
     uint32_t result = 0;
-
+    int len=0;
+    for(;cvalue[len]!=0;len++);
+    char * value = (char *)malloc(sizeof(char)*(len+1));
+    char * pvalue = value;
+    for(int i=0;i<=len;i++){
+        value[i] = cvalue[i];
+    }
     char* start = value;
     for (;;)
     {
@@ -130,124 +122,125 @@ static DbFilter parse_filter(char* value, uint32_t filter)
             value++;
         }
     }
-
+    free(pvalue);
     return static_cast<DbFilter>(result);
 }
-Config pkgi_set_default_config()
-{
-    Config config{};
 
-    config.games_url = default_psv_games_url;
-    config.dlcs_url = default_psv_dlcs_url;
-    config.demos_url = default_psv_demos_url;
-    config.themes_url = default_psv_themes_url;
-    config.psm_games_url = default_psm_games_url;
-    config.psx_games_url = default_psx_games_url;
-    config.psp_games_url = default_psp_games_url;
-    config.comppack_url = default_comppack_url;
-    config.psp_dlcs_url = default_psp_dlcs_url;
-    config.sort = SortByName;
-    config.order = SortAscending;
-    config.filter = DbFilterAll;
-    config.install_psp_psx_location = "ux0:";
-    return config;
 
+void repo_to_address(Config &config, int isRefresh){
+    if(isRefresh){
+        config.repo_list = std::vector<std::string>();
+        //GitHub 中文源
+        config.repo_list.push_back("https://github.com/Anarch13/NPS_Chinese_Version/raw/master/");
+        //NPS官方英文源
+        config.repo_list.push_back("http://beta.nopaystation.com/tsv/");
+        //即将废弃
+        config.repo_list.push_back("http://47.100.37.250/tsvfiles/");
+        config.repo = 0;
+    }
+    const std::string repo_address = config.repo_list[config.repo];
+    config.games_url = repo_address + PSV_GAMES_POSTFIX;
+    config.dlcs_url = repo_address + PSV_DLCS_POSTFIX;
+    config.demos_url = repo_address + PSV_DEMOS_POSTFIX;
+    config.themes_url = repo_address + PSV_THEMES_POSTFIX;
+    config.psm_games_url = repo_address + PSM_GAMES_POSTFIX;
+    config.psx_games_url = repo_address + PSX_GAMES_POSTFIX;
+    config.psp_games_url = repo_address + PSP_GAMES_POSTFIX;
+    config.psp_dlcs_url = repo_address + PSP_DLCS_POSTFIX;
 }
-Config pkgi_load_config()
+
+
+Config pkgi_load_config(int isRefresh)
 {
     try
     {
         Config config{};
 
-        config.games_url = default_psv_games_url;
-        config.dlcs_url = default_psv_dlcs_url;
-        config.demos_url = default_psv_demos_url;
-        config.themes_url = default_psv_themes_url;
-        config.psm_games_url = default_psm_games_url;
-        config.psx_games_url = default_psx_games_url;
-        config.psp_games_url = default_psp_games_url;
-        config.psp_dlcs_url = default_psp_dlcs_url;
-        config.comppack_url = default_comppack_url;
+        config.repo = 0;
+        config.repo_list = std::vector<std::string>();
         config.sort = SortByName;
         config.order = SortAscending;
         config.filter = DbFilterAll;
         config.install_psp_psx_location = "ux0:";
-
+        config.comppack_url = default_comppack_url;
+        if(isRefresh){
+            repo_to_address(config,1);
+            pkgi_save_config(config);
+            return config;
+        }
+        //IO:读取Config
         auto const path =
-                fmt::format("{}/config.txt", pkgi_get_config_folder());
+                fmt::format("{}/config_cn.json", pkgi_get_config_folder());
         LOGF("config location: {}", path);
 
         if (!pkgi_file_exists(path))
-            return config;
-
-        auto data = pkgi_load(path);
-        data.push_back('\n');
-
-        LOG("config.txt loaded, parsing");
-        auto text = reinterpret_cast<char*>(data.data());
-        const auto end = text + data.size();
-
-        while (text < end)
         {
-            const auto key = text;
-
-            text = skipnonws(text, end);
-            if (text == end)
-                break;
-
-            *text++ = 0;
-
-            text = skipws(text, end);
-            if (text == end)
-                break;
-
-            const auto value = text;
-
-            text = skipnonws(text, end);
-            if (text == end)
-                break;
-
-            *text++ = 0;
-
-            text = skipws(text, end);
-
-            if (pkgi_stricmp(key, "url") == 0 ||
-                pkgi_stricmp(key, "url_games") == 0)
-                config.games_url = value;
-            else if (pkgi_stricmp(key, "url_dlcs") == 0)
-                config.dlcs_url = value;
-            else if (pkgi_stricmp(key, "url_psv_demos") == 0)
-                config.demos_url = value;
-            else if (pkgi_stricmp(key, "url_psv_themes") == 0)
-                config.themes_url = value;
-            else if (pkgi_stricmp(key, "url_psm_games") == 0)
-                config.psm_games_url = value;
-            else if (pkgi_stricmp(key, "url_psx_games") == 0)
-                config.psx_games_url = value;
-            else if (pkgi_stricmp(key, "url_psp_games") == 0)
-                config.psp_games_url = value;
-            else if (pkgi_stricmp(key, "url_psp_dlcs") == 0)
-                config.psp_dlcs_url = value;
-            else if (pkgi_stricmp(key, "url_comppack") == 0)
-                config.comppack_url = value;
-            else if (pkgi_stricmp(key, "sort") == 0)
-                config.sort = parse_sort(value, SortByName);
-            else if (pkgi_stricmp(key, "order") == 0)
-                config.order = parse_order(value, SortAscending);
-            else if (pkgi_stricmp(key, "filter") == 0)
-                config.filter = parse_filter(value, DbFilterAll);
-            else if (pkgi_stricmp(key, "no_version_check") == 0)
-                config.no_version_check = 1;
-            else if (pkgi_stricmp(key, "install_psp_as_pbp") == 0)
-                config.install_psp_as_pbp = 1;
-            else if (pkgi_stricmp(key, "install_psp_psx_location") == 0)
-                config.install_psp_psx_location = value;
-            else if (
-                    pkgi_stricmp(key, "psm_disclaimer_yes_i_read_the_readme") ==
-                    0)
-                config.psm_readme_disclaimer =
-                        (pkgi_stricmp(value, "NoPsmDrm") == 0);
+            repo_to_address(config,1);
+            pkgi_save_config(config);
+            return config;
         }
+        auto data = pkgi_load(path);
+        data.push_back('\0');
+        //JSON:解析数据
+        std::string config_text(data.begin(), data.end());
+        rapidjson::StringStream config_json(config_text.c_str());
+
+        rapidjson::Document json_data;
+        json_data.ParseStream(config_json);
+        if(!json_data.IsObject()){
+            throw formatEx<std::runtime_error>(
+                "加载配置失败:\n{}", "解析失败");
+        }
+        if(json_data.HasMember("sort")&&json_data["sort"].IsString()){
+            config.sort = parse_sort(json_data["sort"].GetString(), SortByName);
+        }
+        if(json_data.HasMember("order")&&json_data["order"].IsString()){
+            config.order = parse_order(json_data["order"].GetString(), SortAscending);
+        }
+        if(json_data.HasMember("filter")&&json_data["filter"].IsString()){
+            config.filter = parse_filter(json_data["filter"].GetString(), DbFilterAll);
+        }
+        if(json_data.HasMember("auto_update")&&json_data["auto_update"].IsBool()){
+            config.no_version_check = !json_data["filter"].GetBool();
+        }
+        if(json_data.HasMember("install_psp_as_pbp")&&json_data["install_psp_as_pbp"].IsBool()){
+            config.install_psp_as_pbp = json_data["install_psp_as_pbp"].GetBool();
+        }
+        if(json_data.HasMember("install_psp_psx_location")&&json_data["install_psp_psx_location"].IsString()){
+            config.install_psp_psx_location = json_data["install_psp_psx_location"].GetString();
+        }
+        if(json_data.HasMember("enablePSM")&&json_data["enablePSM"].IsString()){
+            config.psm_readme_disclaimer = json_data["enablePSM"].GetBool();
+        }
+        if(json_data.HasMember("repoID")&&json_data["repoID"].IsInt()){
+            config.repo = json_data["repoID"].GetInt();
+        }
+        if(json_data.HasMember("repoList")&&json_data["repoList"].IsArray()){
+            rapidjson::Value list = json_data["repoList"].GetArray();
+            rapidjson::Value temp;
+            for (rapidjson::SizeType i=0;i<list.Size();i++){
+                temp = list[i];
+                if(temp.IsString()){
+                    config.repo_list.push_back(temp.GetString());
+                }
+            }
+        }
+        
+        if(json_data.HasMember("url_comppack")&&json_data["url_comppack"].IsString()){
+            config.comppack_url = json_data["url_comppack"].GetString();
+        }
+        //读取JSON结束
+        if(config.repo_list.size() == 0){
+            //内置地址
+            config.repo_list.push_back("http://47.100.37.250");
+            config.repo_list.push_back("https://github.com");
+        }
+        //若超出范围则直接置0
+        if(config.repo>=config.repo_list.size()){
+            config.repo = 0;
+        }
+        //repo转真实地址
+        repo_to_address(config,0);
         return config;
     }
     catch (const std::exception& e)
@@ -287,81 +280,75 @@ static const char* order_str(DbSortOrder order)
     return "";
 }
 
+static const std::string filter_str(uint32_t filter){
+    std::string tmp = "";
+    bool isNew = true;
+    if (filter & DbFilterRegionASA)
+    {
+        if(isNew){isNew=false;}
+        else{tmp+=",";}
+        tmp += "ASA";
+    }
+    if (filter & DbFilterRegionEUR)
+    {
+        if(isNew){isNew=false;}
+        else{tmp+=",";}
+        tmp += "EUR";
+    }
+    if (filter & DbFilterRegionJPN)
+    {
+        if(isNew){isNew=false;}
+        else{tmp+=",";}
+        tmp += "JPN";
+    }
+    if (filter & DbFilterRegionUSA)
+    {
+        if(isNew){isNew=false;}
+        else{tmp+=",";}
+        tmp += "USA";
+    }
+    return tmp;
+}
+
+int pkgi_strlen(const char * str){
+    int len;
+    for(len = 0;str[len]!=0;len++);
+    return len;
+}
+
 void pkgi_save_config(const Config& config)
 {
-    char data[4096];
-    int len = 0;
-#define SAVE_CONF(configstr, configname, defaultname)                   \
-    if (!config.configname.empty() && config.configname != defaultname) \
-        len += pkgi_snprintf(                                           \
-                data + len,                                             \
-                sizeof(data) - len,                                     \
-                configstr " %s\n",                                      \
-                config.configname.c_str());
-    SAVE_CONF("url_games", games_url, default_psv_games_url)
-    SAVE_CONF("url_dlcs", dlcs_url, default_psv_dlcs_url)
-    SAVE_CONF("url_psv_demos", demos_url, default_psv_demos_url)
-    SAVE_CONF("url_psv_themes", themes_url, default_psv_themes_url)
-    SAVE_CONF("url_psm_games", psm_games_url, default_psm_games_url)
-    SAVE_CONF("url_psx_games", psx_games_url, default_psx_games_url)
-    SAVE_CONF("url_psp_games", psp_games_url, default_psp_games_url)
-    SAVE_CONF("url_psp_dlcs", psp_dlcs_url, default_psp_dlcs_url)
-    SAVE_CONF("url_comppack", comppack_url, default_comppack_url)
-#undef SAVE_CONF
-    if (!config.install_psp_psx_location.empty())
-        len += pkgi_snprintf(
-                data + len,
-                sizeof(data) - len,
-                "install_psp_psx_location %s\n",
-                config.install_psp_psx_location.c_str());
-    if (config.psm_readme_disclaimer)
-        len += pkgi_snprintf(
-                data + len,
-                sizeof(data) - len,
-                "psm_disclaimer_yes_i_read_the_readme NoPsmDrm\n");
-    len += pkgi_snprintf(
-            data + len, sizeof(data) - len, "sort %s\n", sort_str(config.sort));
-    len += pkgi_snprintf(
-            data + len,
-            sizeof(data) - len,
-            "order %s\n",
-            order_str(config.order));
-    len += pkgi_snprintf(data + len, sizeof(data) - len, "filter ");
-    const char* sep = "";
-    if (config.filter & DbFilterRegionASA)
-    {
-        len += pkgi_snprintf(data + len, sizeof(data) - len, "%sASA", sep);
-        sep = ",";
+    
+    
+    rapidjson::StringBuffer buff;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buff);
+    writer.StartObject();
+    writer.Key("sort");
+    writer.String(sort_str(config.sort));
+    writer.Key("order");
+    writer.String(order_str(config.order));
+    writer.Key("filter");
+    writer.String(filter_str(config.filter).c_str());
+    writer.Key("auto_update");
+    writer.Bool(!config.no_version_check);
+    writer.Key("install_psp_as_pbp");
+    writer.Bool(config.install_psp_as_pbp);
+    writer.Key("install_psp_psx_location");
+    writer.String(config.install_psp_psx_location.c_str());
+    writer.Key("enablePSM");
+    writer.Bool(config.psm_readme_disclaimer);
+    writer.Key("repoID");
+    writer.Int(config.repo);
+    writer.Key("url_comppack");
+    writer.String(config.comppack_url.c_str());
+    writer.Key("repoList");
+    writer.StartArray();
+    for(int i=0;i<config.repo_list.size();i++){
+        writer.String(config.repo_list[i].c_str());
     }
-    if (config.filter & DbFilterRegionEUR)
-    {
-        len += pkgi_snprintf(data + len, sizeof(data) - len, "%sEUR", sep);
-        sep = ",";
-    }
-    if (config.filter & DbFilterRegionJPN)
-    {
-        len += pkgi_snprintf(data + len, sizeof(data) - len, "%sJPN", sep);
-        sep = ",";
-    }
-    if (config.filter & DbFilterRegionUSA)
-    {
-        len += pkgi_snprintf(data + len, sizeof(data) - len, "%sUSA", sep);
-        sep = ",";
-    }
-    len += pkgi_snprintf(data + len, sizeof(data) - len, "\n");
-
-    if (config.no_version_check)
-    {
-        len += pkgi_snprintf(
-                data + len, sizeof(data) - len, "no_version_check 1\n");
-    }
-
-    if (config.install_psp_as_pbp)
-    {
-        len += pkgi_snprintf(
-                data + len, sizeof(data) - len, "install_psp_as_pbp 1\n");
-    }
-
+    writer.EndArray();
+    writer.EndObject();
     pkgi_save(
-            fmt::format("{}/config.txt", pkgi_get_config_folder()), data, len);
+            fmt::format("{}/config_cn.json", pkgi_get_config_folder()), buff.GetString(), pkgi_strlen(buff.GetString()));
+    
 }

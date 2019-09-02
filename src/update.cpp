@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#define PKGJ_UPDATE_URL "http://47.100.37.250/pkgj"
+#define PKGJ_UPDATE_URL "https://raw.githubusercontent.com/guch8017/pkgj/last"
 #define PKGJ_UPDATE_URL_VERSION PKGJ_UPDATE_URL "/version"
 
 
