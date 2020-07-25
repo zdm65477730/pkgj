@@ -66,7 +66,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((tmpl = sceHttpCreateTemplate(
                  PKGI_USER_AGENT, SCE_HTTP_VERSION_1_1, SCE_TRUE)) < 0)
         throw HttpError(fmt::format(
-                "创建模板失败: {:#08x}",
+                "sceHttpCreateTemplate失败: {:#08x}",
                 static_cast<uint32_t>(tmpl)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -78,7 +78,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((conn = sceHttpCreateConnectionWithURL(tmpl, url.c_str(), SCE_FALSE)) <
         0)
         throw HttpError(fmt::format(
-                "创建与链接的连接失败: {:#08x}",
+                "sceHttpCreateConnectionWithURL失败: {:#08x}",
                 static_cast<uint32_t>(conn)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -89,7 +89,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((req = sceHttpCreateRequestWithURL(
                  conn, SCE_HTTP_METHOD_GET, url.c_str(), 0)) < 0)
         throw HttpError(fmt::format(
-                "创建链接的请求失败: {:#08x}",
+                "sceHttpCreateRequestWithURL失败: {:#08x}",
                 static_cast<uint32_t>(req)));
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -106,18 +106,41 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
         if ((err = sceHttpAddRequestHeader(
                      req, "Range", range, SCE_HTTP_HEADER_ADD)) < 0)
             throw HttpError(fmt::format(
-                    "添加请求文件头失败: {:#08x}",
+                    "sceHttpAddRequestHeader失败: {:#08x}",
                     static_cast<uint32_t>(err)));
     }
 
     if ((err = sceHttpSendRequest(req, NULL, 0)) < 0)
-        throw formatEx<HttpError>(
-                "发送请求失败: {:#08x}\n{}",
-                static_cast<uint32_t>(err),
-                static_cast<uint32_t>(err) == 0x80431075
-                        ? "PSVita无法支持HTTPS链接"
-                          "\n请更换HTTP链接"
-                        : "");
+    {
+        std::string err_msg;
+        switch (err)
+        {
+            case 0x80431063:
+                err_msg = "网络错误";
+                break;
+            case 0x80431068:
+                err_msg = "网络超时";
+                break;
+            case 0x80431082:
+                err_msg = "请求被阻止";
+                break;
+            case 0x80436007:
+                err_msg = "主机未找到";
+                break;
+            case 0x80431084:
+                err_msg = "代理错误";
+                break;
+            case 0x80431075:
+                err_msg = "SSL错误";
+                break;
+            default:
+                err_msg = "";
+        }
+
+        throw formatEx<HttpError>("sceHttpSendRequest失败: {:#08x}\n{}",
+            static_cast<uint32_t>(err),
+            err_msg);
+    }
 
     http->used = 1;
     http->tmpl = tmpl;
@@ -135,7 +158,7 @@ int64_t VitaHttp::read(uint8_t* buffer, uint64_t size)
     int read = sceHttpReadData(_http->req, buffer, size);
     if (read < 0)
         throw HttpError(fmt::format(
-                "下载错误 {:#08x}",
+                "HTTP下载错误 {:#08x}",
                 static_cast<uint32_t>(static_cast<int32_t>(read))));
     return read;
 }
@@ -159,7 +182,7 @@ int64_t VitaHttp::get_length()
     res = sceHttpGetResponseContentLength(_http->req, &content_length);
     if (res < 0)
         throw HttpError(fmt::format(
-                "获取响应内容长度失败: {:#08x}",
+                "sceHttpGetResponseContentLength失败: {:#08x}",
                 static_cast<uint32_t>(res)));
     if (res == (int)SCE_HTTP_ERROR_NO_CONTENT_LENGTH ||
         res == (int)SCE_HTTP_ERROR_CHUNK_ENC)
@@ -179,7 +202,7 @@ int VitaHttp::get_status()
     int status;
     if ((res = sceHttpGetStatusCode(_http->req, &status)) < 0)
         throw HttpError(fmt::format(
-                "获取状态代码失败: {:#08x}",
+                "sceHttpGetStatusCode失败: {:#08x}",
                 static_cast<uint32_t>(res)));
 
     return status;

@@ -33,7 +33,7 @@ void pkgi_mkdirs(const char* ppath)
         int err = sceIoMkdir(path.c_str(), 0777);
         if (err < 0 && err != PKGI_ERRNO_EEXIST)
             throw std::runtime_error(fmt::format(
-                    "新建文件夹 ({}) 失败:\n{:#08x}",
+                    "sceIoMkdir({})失败:\n{:#08x}",
                     path.c_str(),
                     static_cast<uint32_t>(err)));
         *ptr = last;
@@ -78,8 +78,7 @@ InodeType pkgi_get_inode_type(const std::string& path)
     throw formatEx("unknown inode type {}", path);
 }
 
-
-int pkgi_file_exists(const std::string& path)
+bool pkgi_file_exists(const std::string& path)
 {
     SceIoStat stat;
     return sceIoGetstat(path.c_str(), &stat) >= 0;
@@ -146,7 +145,7 @@ int64_t pkgi_seek(void* f, uint64_t offset)
     auto const pos = sceIoLseek((intptr_t)f, offset, SCE_SEEK_SET);
     if (pos < 0)
         throw formatEx<std::runtime_error>(
-                "查找错误{:#08x}", static_cast<uint32_t>(pos));
+                "sceIoLseek错误 {:#08x}", static_cast<uint32_t>(pos));
     return pos;
 }
 
@@ -155,7 +154,7 @@ int pkgi_read(void* f, void* buffer, uint32_t size)
     const auto read = sceIoRead((SceUID)(intptr_t)f, buffer, size);
     if (read < 0)
         throw formatEx<std::runtime_error>(
-                "读取错误{:#08x}", static_cast<uint32_t>(read));
+                "sceIoRead错误 {:#08x}", static_cast<uint32_t>(read));
     return read;
 }
 
@@ -164,7 +163,7 @@ int pkgi_write(void* f, const void* buffer, uint32_t size)
     int write = sceIoWrite((SceUID)(intptr_t)f, buffer, size);
     if (write < 0)
         throw formatEx<std::runtime_error>(
-                "写入错误{:#08x}", static_cast<uint32_t>(write));
+                "sceIoWrite错误 {:#08x}", static_cast<uint32_t>(write));
 
     return write;
 }
@@ -185,7 +184,7 @@ std::vector<uint8_t> pkgi_load(const std::string& path)
     SceUID fd = sceIoOpen(path.c_str(), SCE_O_RDONLY, 0777);
     if (fd < 0)
         throw std::runtime_error(fmt::format(
-                "打开 ({})  错误:\n{:#08x}",
+                "sceIoOpen({})失败:\n{:#08x}",
                 path,
                 static_cast<uint32_t>(fd)));
 
@@ -202,7 +201,7 @@ std::vector<uint8_t> pkgi_load(const std::string& path)
     const auto read = sceIoRead(fd, data.data(), data.size());
     if (read < 0)
         throw std::runtime_error(fmt::format(
-                "读取 ({}) 错误:\n{:#08x}",
+                "sceIoRead({})失败:\n{:#08x}",
                 path,
                 static_cast<uint32_t>(read)));
 
@@ -217,7 +216,7 @@ void pkgi_save(const std::string& path, const void* data, uint32_t size)
             path.c_str(), SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
     if (fd < 0)
         throw std::runtime_error(fmt::format(
-                "打开 ({}) 错误:\n{:#08x}",
+                "sceIoOpen({})失败:\n{:#08x}",
                 path,
                 static_cast<uint32_t>(fd)));
 
@@ -232,7 +231,7 @@ void pkgi_save(const std::string& path, const void* data, uint32_t size)
         int written = sceIoWrite(fd, data8, size);
         if (written <= 0)
             throw std::runtime_error(fmt::format(
-                    "写入 ({}) 错误:\n{:#08x}",
+                    "sceIoWrite({})失败:\n{:#08x}",
                     path,
                     static_cast<uint32_t>(written)));
         data8 += written;
@@ -247,7 +246,7 @@ std::vector<std::string> pkgi_list_dir_contents(const std::string& path)
         return {};
     if (fd < 0)
         throw formatEx<std::runtime_error>(
-                "打开失败 ({}): {:#08x}",
+                "sceIoDopen({})失败: {:#08x}",
                 path,
                 static_cast<uint32_t>(fd));
     BOOST_SCOPE_EXIT_ALL(&)
@@ -262,7 +261,7 @@ std::vector<std::string> pkgi_list_dir_contents(const std::string& path)
         const auto ret = sceIoDread(fd, &dirent);
         if (ret < 0)
             throw formatEx<std::runtime_error>(
-                    "读取错误 ({}): {:#08x}",
+                    "sceIoDread({})失败: {:#08x}",
                     path,
                     static_cast<uint32_t>(ret));
         else if (ret == 0)

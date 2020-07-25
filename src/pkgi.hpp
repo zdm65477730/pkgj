@@ -8,6 +8,7 @@
 #include <stdint.h>
 
 // values compatible with psp2/ctrl.h header
+#define PKGI_BUTTON_INTERCEPTED 0x00010000
 #define PKGI_BUTTON_SELECT 0x00000001
 #define PKGI_BUTTON_START 0x00000008
 
@@ -118,3 +119,5 @@ int pkgi_text_height(const char* text);
 class Downloader;
 struct DbItem;
 void pkgi_start_download(Downloader& downloader, const DbItem& item);
+
+bool pkgi_is_module_present(const char* module_name);

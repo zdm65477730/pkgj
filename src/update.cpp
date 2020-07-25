@@ -7,9 +7,8 @@
 
 #include <vector>
 
-#define PKGJ_UPDATE_URL "https://raw.githubusercontent.com/guch8017/pkgj/last"
+#define PKGJ_UPDATE_URL "https://raw.githubusercontent.com/zdm65477730/pkgj/last"
 #define PKGJ_UPDATE_URL_VERSION PKGJ_UPDATE_URL "/version"
-
 
 namespace
 {
@@ -24,7 +23,7 @@ void start_download()
         const auto filename = fmt::format(
                 "{}/pkgj-v{}.vpk", pkgi_get_config_folder(), version);
         const auto url =
-                fmt::format("{}/files/pkgj-v{}.vpk", PKGJ_UPDATE_URL, version);
+                fmt::format("{}/pkgj-v{}.vpk", PKGJ_UPDATE_URL, version);
 
         pkgi_dialog_message("正在下载新版本安装文件...", 0);
 
@@ -73,6 +72,13 @@ void update_thread()
 {
     try
     {
+        if (!pkgi_is_module_present("NoNpDrm"))
+            pkgi_dialog_error("NoNpDrm没有找到。游戏将不能安装或运行。");
+
+        while (pkgi_dialog_is_open()) {
+            pkgi_sleep(20);
+        }
+
         LOGF("checking latest pkgi version at {}", PKGJ_UPDATE_URL_VERSION);
 
         VitaHttp http;
@@ -84,7 +90,7 @@ void update_thread()
 
         LOGF("last version is {}", last_version);
 
-        if (last_version.compare(PKGI_VERSION)<0)
+        if (last_version != PKGI_VERSION)
         {
             LOG("new version available");
 
@@ -92,7 +98,7 @@ void update_thread()
 
             pkgi_dialog_question(
                     fmt::format(
-                            "PKGj中文版现已更新至{}版本!\n是否立即"
+                            "新的PKGj版本{}可用!\n是否立即"
                             "下载?",
                             last_version)
                             .c_str(),

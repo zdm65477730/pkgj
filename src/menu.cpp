@@ -259,9 +259,9 @@ int pkgi_do_menu(pkgi_input* input)
         const MenuEntry* entry = menu_entries + i;
 
         MenuType type = entry->type;
-        /*if (type == MenuText)
+        if (type == MenuText)
         {
-            y += font_height / 2;
+            y += font_height / 3;
         }
         else if (type == MenuSearchClear && !menu_search_clear)
         {
@@ -271,25 +271,12 @@ int pkgi_do_menu(pkgi_input* input)
             y += font_height / 3;
         else if (type == MenuShow)
         {
-            if (entry[-1].type != MenuShow)
-                y += font_height / 3;
             if (!(entry->value & menu_allow_refresh))
             {
                 continue;
             }
         }
-        *///压缩菜单空间
-        if (type == MenuSearchClear && !menu_search_clear)
-        {
-            continue;
-        }
-        if (type == MenuShow)
-        {
-            if (!(entry->value & menu_allow_refresh))
-            {
-                continue;
-            }
-        }
+
         uint32_t color = menu_selected == i ? PKGI_COLOR_TEXT_MENU_SELECTED
                                             : PKGI_COLOR_TEXT_MENU;
 
@@ -332,7 +319,7 @@ int pkgi_do_menu(pkgi_input* input)
         }
         pkgi_draw_text(x, y, color, text);
 
-        y += font_height;
+        y += font_height - 1;
     }
 
     return 1;

@@ -1,5 +1,6 @@
 /build*
 /ci/build*
+/.vscode
 .tags
 TODO
 .DS_Store

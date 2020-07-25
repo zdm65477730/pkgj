@@ -3,7 +3,6 @@
 #include "db.hpp"
 
 #include <string>
-#include <vector>
 
 typedef struct Config
 {
@@ -12,11 +11,11 @@ typedef struct Config
     uint32_t filter;
     int no_version_check;
     int install_psp_as_pbp;
-    int repo;
+    std::string install_psv_location;
     std::string install_psp_psx_location;
-    bool psm_readme_disclaimer;
-
-    std::vector<std::string> repo_list;
+    std::string install_psp_game_path;
+    std::string install_psp_iso_path;
+    std::string install_psp_psx_path;
 
     std::string games_url;
     std::string dlcs_url;
@@ -30,5 +29,5 @@ typedef struct Config
     std::string comppack_url;
 } Config;
 
-Config pkgi_load_config(int isRefresh);
+Config pkgi_load_config();
 void pkgi_save_config(const Config& config);

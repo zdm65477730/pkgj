@@ -19,7 +19,6 @@ extern "C"
 #include "utils.hpp"
 #include "vitahttp.hpp"
 #include "zrif.hpp"
-#include "vita.hpp"
 #include <imgui_internal.h>
 
 #include <vita2d.h>
@@ -33,7 +32,7 @@ extern "C"
 #include <cstring>
 
 #define PKGI_UPDATE_URL \
-    "https://api.github.com/repos/guch8017/pkgj/releases/latest"
+    "https://api.github.com/repos/zdm65477730/pkgj/releases/latest"
 
 namespace
 {
@@ -141,6 +140,7 @@ void configure_db(TitleDatabase* db, const char* search, const Config* config)
                         : config->filter & ~DbFilterInstalled,
                 config->sort,
                 config->order,
+                config->install_psv_location,
                 search ? search : "",
                 installed_games);
     }
@@ -185,6 +185,8 @@ void pkgi_refresh_thread(void)
     LOG("starting update");
     try
     {
+        auto mode_count = ModeCount + (config.comppack_url.empty() ? 0 : 2);
+
         ScopeProcessLock lock;
         for (int i = 0; i < ModeCount; ++i)
         {
@@ -198,7 +200,7 @@ void pkgi_refresh_thread(void)
                         "正在刷新 {} [{}/{}]",
                         pkgi_mode_to_string(mode),
                         i + 1,
-                        ModeCount + 2);
+                        mode_count);
             }
             auto const http = std::make_unique<VitaHttp>();
             db->update(mode, http.get(), url);
@@ -209,8 +211,8 @@ void pkgi_refresh_thread(void)
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
                         "正在刷新 游戏本体兼容包 [{}/{}]",
-                        ModeCount + 2 - 1,
-                        ModeCount + 2);
+                        mode_count - 1,
+                        mode_count);
             }
             {
                 auto const http = std::make_unique<VitaHttp>();
@@ -221,8 +223,8 @@ void pkgi_refresh_thread(void)
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
                         "正在刷新 游戏更新兼容包 [{}/{}]",
-                        ModeCount + 2,
-                        ModeCount + 2);
+                        mode_count,
+                        mode_count);
             }
             {
                 auto const http = std::make_unique<VitaHttp>();
@@ -248,20 +250,22 @@ void pkgi_refresh_thread(void)
 
 const char* pkgi_get_mode_partition()
 {
-    return mode == ModePspGames || mode == ModePsxGames
-                   ? config.install_psp_psx_location.c_str()
-                   : "ux0:";
+    return mode == ModePspGames
+        || mode == ModePspDlcs
+        || mode == ModePsxGames
+    ? config.install_psp_psx_location.c_str()
+    : config.install_psv_location.c_str();
 }
 
 void pkgi_refresh_installed_packages()
 {
-    auto games = pkgi_get_installed_games();
+    auto games = pkgi_get_installed_games(config.install_psv_location);
     installed_games.clear();
     installed_games.insert(
             std::make_move_iterator(games.begin()),
             std::make_move_iterator(games.end()));
 
-    auto themes = pkgi_get_installed_themes();
+    auto themes = pkgi_get_installed_themes(config.install_psv_location);
     installed_themes.clear();
     installed_themes.insert(
             std::make_move_iterator(themes.begin()),
@@ -295,39 +299,7 @@ void pkgi_install_package(Downloader& downloader, DbItem* item)
     pkgi_start_download(downloader, *item);
     item->presence = PresenceUnknown;
 }
-void pkgi_psm_enable(Config * configNode)
-{
-    if (configNode->psm_readme_disclaimer)
-    {
-        pkgi_dialog_error("错误:PSM已经配置为启用!");
-    }
-    else
-    {
-    pkgi_dialog_question("请仔细阅读NoPsmDrm的readme文档并保证愿意承担本功能带来的一切风险",
-                    {{"启用PSM功能",[configNode] {configNode->psm_readme_disclaimer=1;pkgi_save_config(*configNode);}},
-                    {"取消", [] {}}});
-    }
-}
 
-void pkgi_repo_select(Config & config){
-    std::vector<struct Response> vecList;
-    for(uint i=0;i<config.repo_list.size();i++){
-        struct Response tmpRsp;
-        tmpRsp.text = config.repo_list[i];
-        tmpRsp.callback = [&,i]{config.repo = i;pkgi_save_config(config);};
-        vecList.push_back(tmpRsp);
-    }
-    pkgi_dialog_question("Repo List, Select a tsv files repo",vecList);
-}
-
-void pkgi_reset_all(void)
-{
-    pkgi_dialog_question("即将清除所有数据缓存,是否确认?",
-                    {
-                        {"取消",[] {}},
-                        {"确认",[] {pkgi_delete_dir(pkgi_get_config_folder());pkgi_end();exit(0);}},
-                    });
-}
 void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
 {
     if (size <= 0)
@@ -371,7 +343,7 @@ void pkgi_refresh_list()
     pkgi_start_thread("refresh_thread", &pkgi_refresh_thread);
 }
 
-void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
+void pkgi_do_main(Downloader& downloader, pkgi_input* input)
 {
     int col_titleid = 0;
     int col_region = col_titleid + pkgi_text_width("PCSE00000") +
@@ -462,21 +434,6 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
                 }
             }
         }
-        if (input->active & PKGI_BUTTON_START)
-        {
-            pkgi_dialog_about(fmt::format("PKGj中文版 v{}, 源码基于GitHub开发者blastrock的PKGj v{}, 由PSVita破解百度贴吧Anarch13翻译, 5334032编译制作. 遵循2-clause BSD授权, 禁止用于任何形式的商业用途!",
-                            PKGI_VERSION,
-                            PKGI_VERSION_ORI).c_str(),
-                        {
-                            {"确定", [] {}},
-                            {"数据源", [&] {pkgi_repo_select(config);}},
-                            {"重置配置文件",[] {Config temp=pkgi_load_config(1);}},
-                            {fmt::format("{}自动更新",configNode->no_version_check?"启用":"禁用").c_str(),[configNode] {configNode->no_version_check=!configNode->no_version_check;pkgi_save_config(*configNode);}},
-                            {"启用PSM功能", [configNode] {pkgi_psm_enable(configNode);}},
-                            {"清除PKGj缓存",[]{pkgi_reset_all();}},
-                        });
-            return;
-        }
     }
 
     int y = font_height + PKGI_MAIN_HLINE_EXTRA;
@@ -501,28 +458,28 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
                     item->presence = PresenceInstalling;
                 break;
             case ModePsmGames:
-                if (pkgi_psm_is_installed(titleid))
+                if (pkgi_psm_is_installed(pkgi_get_mode_partition(), titleid))
                     item->presence = PresenceInstalled;
                 else if (downloader.is_in_queue(PsmGame, item->content))
                     item->presence = PresenceInstalling;
                 break;
             case ModePspDlcs:
                 if (pkgi_psp_is_installed(
-                            pkgi_get_mode_partition(), item->content.c_str()))
+                            pkgi_get_mode_partition(), config.install_psp_game_path.c_str(), config.install_psp_iso_path.c_str(), item->content.c_str()))
                     item->presence = PresenceGamePresent;
                 else if (downloader.is_in_queue(PspGame, item->content))
                     item->presence = PresenceInstalling;
                 break;
             case ModePspGames:
                 if (pkgi_psp_is_installed(
-                            pkgi_get_mode_partition(), item->content.c_str()))
+                            pkgi_get_mode_partition(), config.install_psp_game_path.c_str(), config.install_psp_iso_path.c_str(), item->content.c_str()))
                     item->presence = PresenceInstalled;
                 else if (downloader.is_in_queue(PspGame, item->content))
                     item->presence = PresenceInstalling;
                 break;
             case ModePsxGames:
                 if (pkgi_psx_is_installed(
-                            pkgi_get_mode_partition(), item->content.c_str()))
+                            pkgi_get_mode_partition(), config.install_psp_psx_path.c_str(), item->content.c_str()))
                     item->presence = PresenceInstalled;
                 else if (downloader.is_in_queue(PsxGame, item->content))
                     item->presence = PresenceInstalling;
@@ -530,7 +487,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
             case ModeDlcs:
                 if (downloader.is_in_queue(Dlc, item->content))
                     item->presence = PresenceInstalling;
-                else if (pkgi_dlc_is_installed(item->content.c_str()))
+                else if (pkgi_dlc_is_installed(item->partition.c_str(), item->content.c_str()))
                     item->presence = PresenceInstalled;
                 else if (pkgi_is_installed(titleid))
                     item->presence = PresenceGamePresent;
@@ -716,14 +673,14 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input,Config *configNode)
 
         config_temp = config;
         int allow_refresh =
-                !config.games_url.empty() << 0 | !config.dlcs_url.empty() << 1 |
+                !config.games_url.empty() << 0 |
+                !config.dlcs_url.empty() << 1 |
                 !config.demos_url.empty() << 6 |
                 !config.themes_url.empty() << 5 |
                 !config.psx_games_url.empty() << 2 |
                 !config.psp_games_url.empty() << 3 |
                 !config.psp_dlcs_url.empty() << 7 |
-                (!config.psm_games_url.empty() && config.psm_readme_disclaimer)
-                        << 4;
+                !config.psm_games_url.empty() << 4;
         pkgi_menu_start(search_active, &config, allow_refresh);
     }
 }
@@ -909,20 +866,11 @@ void pkgi_do_tail(Downloader& downloader)
     }
     pkgi_draw_text(0, second_line, PKGI_COLOR_TEXT_TAIL, text);
 
-    // get free space of partition only if looking at psx or psp games else show
-    // ux0:
     char size[64];
-    if (mode == ModePsxGames || mode == ModePspGames)
-    {
-        pkgi_friendly_size(
+    pkgi_friendly_size(
                 size,
                 sizeof(size),
                 pkgi_get_free_space(pkgi_get_mode_partition()));
-    }
-    else
-    {
-        pkgi_friendly_size(size, sizeof(size), pkgi_get_free_space("ux0:"));
-    }
 
     char free[64];
     pkgi_snprintf(free, sizeof(free), "可用空间: %s", size);
@@ -938,7 +886,13 @@ void pkgi_do_tail(Downloader& downloader)
     int right = rightw + PKGI_MAIN_TEXT_PADDING;
 
     std::string bottom_text;
-    if (pkgi_menu_is_open())
+    if (gameview || pkgi_dialog_is_open()) {
+        bottom_text = fmt::format(
+                "{} select {} close",
+                pkgi_get_ok_str(),
+                pkgi_get_cancel_str());
+    }
+    else if (pkgi_menu_is_open())
     {
         bottom_text = fmt::format(
                 "{} 选择  " PKGI_UTF8_T " 关闭  {} 取消",
@@ -957,7 +911,7 @@ void pkgi_do_tail(Downloader& downloader)
             else if (item && item->presence != PresenceInstalled)
                 bottom_text += fmt::format("{} 安装 ", pkgi_get_ok_str());
         }
-        bottom_text += PKGI_UTF8_T " 菜单 START关于";
+        bottom_text += PKGI_UTF8_T " 菜单";
     }
 
     pkgi_clip_set(
@@ -1063,6 +1017,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
             {
                 pkgi_start_bgdl(
                         mode_to_bgdl_type(mode),
+                        item.partition,
                         item.name,
                         item.url,
                         item.zrif.empty()
@@ -1072,7 +1027,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
                 pkgi_dialog_message(
                         fmt::format(
                                 "已将 {} 添加至LiveArea下载队列",
-                                item.titleid)
+                                item.name)
                                 .c_str());
             }
             else
@@ -1091,6 +1046,9 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
                                         : std::vector<uint8_t>{},
                         !config.install_psp_as_pbp,
                         pkgi_get_mode_partition(),
+                        config.install_psp_game_path,
+                        config.install_psp_iso_path,
+                        config.install_psp_psx_path,
                         ""});
         }
         else
@@ -1101,7 +1059,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
     catch (const std::exception& e)
     {
         pkgi_dialog_error(
-                fmt::format("{}安装失败: {}", item.titleid, e.what())
+                fmt::format("{}安装失败: {}", item.name, e.what())
                         .c_str());
     }
 }
@@ -1130,7 +1088,7 @@ int main()
 
         LOG("started");
 
-        config = pkgi_load_config(0);
+        config = pkgi_load_config();
         pkgi_dialog_init();
 
         font_height = pkgi_text_height("M");
@@ -1153,11 +1111,23 @@ int main()
         uint32_t* pixels = NULL;
         int width, height;
         if (!io.Fonts->AddFontFromFileTTF(
+                    "sa0:/data/font/pvf/ltn0.pvf",
+                    20.0f,
+                    0,
+                    io.Fonts->GetGlyphRangesDefault()))
+            throw std::runtime_error("无法加载ltn0.pvf");
+        if (!io.Fonts->AddFontFromFileTTF(
+                    "sa0:/data/font/pvf/jpn0.pvf",
+                    20.0f,
+                    0,
+                    io.Fonts->GetGlyphRangesJapanese()))
+            throw std::runtime_error("无法加载jpn0.pvf");
+		if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/cn0.pvf",
                     20.0f,
                     0,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("无法加载 cn0.pvf");
+            throw std::runtime_error("无法加载cn0.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);
@@ -1192,6 +1162,9 @@ int main()
                     io.NavInputs[ImGuiNavInput_DpadRight] = 1.0f;
                 if (input.pressed & pkgi_ok_button())
                     io.NavInputs[ImGuiNavInput_Activate] = 1.0f;
+                if (input.pressed & pkgi_cancel_button() && gameview)
+                    gameview->close();
+
                 input.active = 0;
                 input.pressed = 0;
             }
@@ -1234,7 +1207,8 @@ int main()
             case StateMain:
                 pkgi_do_main(
                         downloader,
-                        pkgi_dialog_is_open() || pkgi_menu_is_open() ? NULL : &input, &config);
+                        pkgi_dialog_is_open() || pkgi_menu_is_open() ? NULL
+                                                                     : &input);
                 break;
             }
 
@@ -1337,7 +1311,6 @@ int main()
                     }
                 }
             }
-
 
             ImGui::EndFrame();
             ImGui::Render();

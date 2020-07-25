@@ -23,8 +23,8 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(VITA_APP_NAME "PKGj")
 set(VITA_TITLEID  "PKGJ00001")
-set(VITA_VERSION  "1.09")
-set(VITA_VERSION_ORI  "0.51")
+set(VITA_VERSION  "1.10")
+set(VITA_VERSION_ORI  "0.55")
 
 option(PKGI_ENABLE_LOGGING "enables debug logging over udp multicast" OFF)
 
@@ -42,5 +42,3 @@ if(HOST_BUILD)
 else()
   include(cross.cmake)
 endif()
-
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)

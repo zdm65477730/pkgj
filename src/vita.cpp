@@ -48,6 +48,7 @@ extern "C"
 extern "C"
 {
     int _newlib_heap_size_user = 128 * 1024 * 1024;
+    extern SceUID _vshKernelSearchModuleByName(const char *name, SceUInt64 *unk);
 }
 
 static vita2d_pgf* g_font;
@@ -146,6 +147,47 @@ void pkgi_memmove(void* dst, const void* src, uint32_t size)
 int pkgi_memequ(const void* a, const void* b, uint32_t size)
 {
     return memcmp(a, b, size) == 0;
+}
+
+int pkgi_is_korean_char(const unsigned int c) {
+    unsigned short ch = c;
+    // hangul compatibility jamo block
+    if (0x3130 <= ch && ch <= 0x318f) {
+        return 1;
+    }
+    // hangul syllables block
+    if (0xac00 <= ch && ch <= 0xd7af) {
+        return 1;
+    }
+    // korean won sign
+    if (ch == 0xffe6) {
+        return 1;
+    }
+    return 0;
+}
+
+int pkgi_is_latin_char(const unsigned int c) {
+    unsigned short ch = c;
+    // basic latin block + latin-1 supplement block
+    if (ch <= 0x00ff) {
+        return 1;
+    }
+    // cyrillic block
+    if (0x0400 <= ch && ch <= 0x04ff) {
+        return 1;
+    }
+    return 0;
+}
+
+int pkgi_is_chinese_char(const unsigned int c) {
+{
+    unsigned char lo = 0, hi = 0;
+    lo = (unsigned char)(c & 0xFF);
+    hi = (unsigned char)((c & 0xFF00) >> 8);
+    if(c < 0x81 || lo > 0xFE) return false; 
+    if(lo >= 0xA1 && lo <= 0xA9) return false;
+    if(hi < 0x40 || hi == 0xFF || hi == 0x7F) return false;
+    return true;
 }
 
 static void pkgi_start_debug_log(void)
@@ -519,7 +561,13 @@ void pkgi_start(void)
     }
 
     vita2d_init_advanced(4 * 1024 * 1024);
-    g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00001/font.pgf");
+    vita2d_system_pgf_config pgf_confs[4] = {
+        {SCE_FONT_LANGUAGE_KOREAN,  pkgi_is_korean_char},
+        {SCE_FONT_LANGUAGE_LATIN,   pkgi_is_latin_char},
+		{SCE_FONT_LANGUAGE_CHINESE, pkgi_is_chinese_char},
+        {SCE_FONT_LANGUAGE_DEFAULT, NULL},
+    };
+    g_font = vita2d_load_system_pgf(4, pgf_confs);
 
     g_time = sceKernelGetProcessTimeWide();
 
@@ -535,14 +583,17 @@ int pkgi_update(pkgi_input* input)
     uint32_t previous = input->down;
 
     input->down = pad.buttons;
-    if (pad.lx < ANALOG_CENTER - ANALOG_THRESHOLD)
-        input->down |= PKGI_BUTTON_LEFT;
-    if (pad.lx > ANALOG_CENTER + ANALOG_THRESHOLD)
-        input->down |= PKGI_BUTTON_RIGHT;
-    if (pad.ly < ANALOG_CENTER - ANALOG_THRESHOLD)
-        input->down |= PKGI_BUTTON_UP;
-    if (pad.ly > ANALOG_CENTER + ANALOG_THRESHOLD)
-        input->down |= PKGI_BUTTON_DOWN;
+    if (!(input->down & PKGI_BUTTON_INTERCEPTED))
+    {
+        if (pad.lx < ANALOG_CENTER - ANALOG_THRESHOLD)
+            input->down |= PKGI_BUTTON_LEFT;
+        if (pad.lx > ANALOG_CENTER + ANALOG_THRESHOLD)
+            input->down |= PKGI_BUTTON_RIGHT;
+        if (pad.ly < ANALOG_CENTER - ANALOG_THRESHOLD)
+            input->down |= PKGI_BUTTON_UP;
+        if (pad.ly > ANALOG_CENTER + ANALOG_THRESHOLD)
+            input->down |= PKGI_BUTTON_DOWN;
+    }
 
     input->pressed = input->down & ~previous;
     input->active = input->pressed;
@@ -664,7 +715,7 @@ void pkgi_delete_dir(const std::string& path)
 
     if (dfd < 0)
         throw formatEx<std::runtime_error>(
-                "打开失败 ({}):\n{:#08x}",
+                "sceIoDopen({})失败:\n{:#08x}",
                 path,
                 static_cast<uint32_t>(dfd));
 
@@ -694,7 +745,7 @@ void pkgi_delete_dir(const std::string& path)
             const auto ret = sceIoRemove(new_path.c_str());
             if (ret < 0)
                 throw formatEx<std::runtime_error>(
-                        "删除失败 ({}):\n{:#08x}",
+                        "sceIoRemove({})失败:\n{:#08x}",
                         new_path,
                         static_cast<uint32_t>(ret));
         }
@@ -706,7 +757,7 @@ void pkgi_delete_dir(const std::string& path)
     res = sceIoRmdir(path.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "文件夹删除失败 ({}):\n{:#08x}",
+                "sceIoRmdir({})失败:\n{:#08x}",
                 path,
                 static_cast<uint32_t>(res));
 }
@@ -826,9 +877,14 @@ std::string pkgi_get_system_version()
         const auto res = _vshSblGetSystemSwVersion(&info);
         if (res < 0)
             throw std::runtime_error(fmt::format(
-                    "获取系统软件版本失败: {:#08x}",
+                    "sceKernelGetSystemSwVersion失败: {:#08x}",
                     static_cast<uint32_t>(res)));
         return std::string(info.versionString);
     }();
     return version;
+}
+
+bool pkgi_is_module_present(const char* module_name) {
+    SceUInt64 unk;
+    return _vshKernelSearchModuleByName(module_name, &unk) >= 0;
 }

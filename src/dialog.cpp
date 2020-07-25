@@ -16,7 +16,6 @@ typedef enum
     DialogMessage,
     DialogError,
     DialogQuestion,
-    DialogAbout,
 } DialogType;
 
 DialogType dialog_type;
@@ -102,22 +101,7 @@ void pkgi_dialog_question(
 
     pkgi_dialog_unlock();
 }
-void pkgi_dialog_about(
-        const std::string& text, const std::vector<Response>& responses)
-{
-    pkgi_dialog_lock();
 
-    ++dialog_name;
-
-    dialog_text = text;
-    dialog_title = "";
-
-    dialog_cancelled = 0;
-    dialog_type = DialogAbout;
-    dialog_responses = responses;
-
-    pkgi_dialog_unlock();
-}
 void pkgi_dialog_close()
 {
     pkgi_dialog_lock();
@@ -143,18 +127,6 @@ void pkgi_do_dialog()
     ImGui::SetNextWindowPos(
             ImVec2{VITA_WIDTH / 2, VITA_HEIGHT / 2}, 0, ImVec2{.5f, .5f});
     ImGui::SetNextWindowSize(ImVec2{PKGI_DIALOG_WIDTH, -1});
-    if (local_type==DialogAbout){
-        ImGui::Begin(
-            "关于",
-            nullptr,
-                    ImGuiWindowFlags_NoResize |
-                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-                    ImGuiWindowFlags_NoScrollWithMouse |
-                    ImGuiWindowFlags_NoCollapse |
-                    ImGuiWindowFlags_NoSavedSettings |
-                    ImGuiWindowFlags_NoInputs);
-    }
-    else{
     ImGui::Begin(
             std::to_string(local_name).c_str(),
             nullptr,
@@ -164,7 +136,6 @@ void pkgi_do_dialog()
                     ImGuiWindowFlags_NoCollapse |
                     ImGuiWindowFlags_NoSavedSettings |
                     ImGuiWindowFlags_NoInputs);
-    }
     ImGui::PushTextWrapPos(0.f);
     if (local_type == DialogError)
         ImGui::TextColored(
@@ -172,7 +143,7 @@ void pkgi_do_dialog()
     else
         ImGui::TextUnformatted(local_text.c_str());
     ImGui::PopTextWrapPos();
-    if (local_type == DialogQuestion||local_type == DialogAbout)
+    if (local_type == DialogQuestion)
     {
         ImGui::Separator();
         for (auto const response : responses)

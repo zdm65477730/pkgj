@@ -1,6 +1,7 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include <stdexcept>
 
 #ifdef PKGI_ENABLE_LOGGING

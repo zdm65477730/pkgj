@@ -1,3 +1,4 @@
+Hardware: [PSV or PSTV]
 Version of firmware: [insert version]
 Version of PKGj: [insert version]
 

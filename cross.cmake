@@ -1,5 +1,8 @@
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
 
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
+
 set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
 
 function(add_assets target)
@@ -55,6 +58,7 @@ add_executable(pkgj
   src/gameview.cpp
   src/patchinfo.cpp
   src/patchinfofetcher.cpp
+  src/imagefetcher.cpp
   src/imgui.cpp
   src/install.cpp
   src/menu.cpp
@@ -77,8 +81,8 @@ target_link_libraries(pkgj
   CONAN_PKG::cereal
   CONAN_PKG::libzip
   CONAN_PKG::imgui
-  CONAN_PKG::taihen
   png
+  jpeg
   z
   m
   SceAppMgr_stub
@@ -97,6 +101,7 @@ target_link_libraries(pkgj
   SceSsl_stub
   SceSysmodule_stub
   SceVshBridge_stub
+  taihen_stub
 )
 
 set_target_properties(pkgj PROPERTIES

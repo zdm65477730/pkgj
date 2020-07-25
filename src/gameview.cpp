@@ -28,6 +28,7 @@ GameView::GameView(
     , _base_comppack(base_comppack)
     , _patch_comppack(patch_comppack)
     , _patch_info_fetcher(item->titleid)
+    , _image_fetcher(item)
 {
     refresh();
 }
@@ -40,7 +41,7 @@ void GameView::render()
     ImGui::SetNextWindowSize(ImVec2(GameViewWidth, GameViewHeight), 0);
 
     ImGui::Begin(
-            fmt::format("{}###gameview",  _item->titleid)
+            fmt::format("{} ({})###gameview", _item->name, _item->titleid)
                     .c_str(),
             nullptr,
             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -50,7 +51,8 @@ void GameView::render()
                     ImGuiWindowFlags_NoSavedSettings |
                     ImGuiWindowFlags_NoInputs);
 
-    ImGui::PushTextWrapPos(0.f);
+    ImGui::PushTextWrapPos(_image_fetcher.get_texture() == nullptr ?
+        0.f : GameViewWidth - 300.f);
     ImGui::Text(fmt::format("当前系统固件版本: {}", pkgi_get_system_version())
                         .c_str());
     ImGui::Text(
@@ -102,37 +104,6 @@ void GameView::render()
             start_download_package();
     }
 
-    switch (_patch_info_fetcher.get_status())
-    {
-    case PatchInfoFetcher::Status::Fetching:
-        ImGui::Button("正在查找游戏更新...###installpatch");
-        break;
-    case PatchInfoFetcher::Status::NoUpdate:
-        ImGui::Button("未找到游戏更新###installpatch");
-        break;
-    case PatchInfoFetcher::Status::Found:
-    {
-        const auto patch_info = _patch_info_fetcher.get_patch_info();
-        if (!_downloader->is_in_queue(Patch, _item->titleid))
-        {
-            if (ImGui::Button(fmt::format(
-                                      "安装游戏更新 {}###installpatch",
-                                      patch_info->version)
-                                      .c_str()))
-                start_download_patch(*patch_info);
-        }
-        else
-        {
-            if (ImGui::Button("取消安装游戏更新###installpatch"))
-                cancel_download_patch();
-        }
-        break;
-    }
-    case PatchInfoFetcher::Status::Error:
-        ImGui::Button("无法获取游戏更新信息###installpatch");
-        break;
-    }
-
     if (_base_comppack)
     {
         if (!_downloader->is_in_queue(CompPackBase, _item->titleid))
@@ -167,8 +138,17 @@ void GameView::render()
         }
     }
 
-    if (ImGui::Button("关闭"))
-        _closed = true;
+    auto tex = _image_fetcher.get_texture();
+    // Display game image
+    if (tex != nullptr)
+    {
+        int tex_w = vita2d_texture_get_width(tex);
+        int tex_h = vita2d_texture_get_height(tex);
+        float tex_x = ImGui::GetWindowContentRegionMax().x - tex_w;
+        float tex_y = ImGui::GetWindowContentRegionMin().y;
+        ImGui::SetCursorPos(ImVec2(tex_x, tex_y));
+        ImGui::Image(tex, ImVec2(tex_w, tex_h));
+    }
 
     ImGui::End();
 }
@@ -194,14 +174,16 @@ void GameView::printDiagnostic()
     {
         if (!_comppack_versions.present)
         {
-            if (!_refood_present)
+            if (_refood_present)
+                ImGui::Text(
+                        "- 游戏将通过reF00D插件引导运行");
+            else if (_0syscall6_present)
+                ImGui::Text(
+                        "- 游戏将通过0syscall6插件引导运行");
+            else
                 printError(
                         "- 当前系统固件版本低于游戏运行所需固件版本, 必须"
-                        "安装兼容包或安装reF00D插件");
-            else
-                ImGui::Text(
-                        "- 游戏将通过reF00D插件引导运行, "
-                        "安装兼容包可有效缩短游戏启动所需时间");
+                        "安装兼容包或安装reF00D或0syscall6插件");
         }
     }
     else
@@ -270,9 +252,10 @@ std::string GameView::get_min_system_version()
 void GameView::refresh()
 {
     LOGF("refreshing gameview");
-    _refood_present = pkgi_file_exists("ur0:tai/keys.bin");
-    _game_version = pkgi_get_game_version(_item->titleid);
-    _comppack_versions = pkgi_get_comppack_versions(_item->titleid);
+    _refood_present = pkgi_is_module_present("ref00d");
+    _0syscall6_present = pkgi_is_module_present("0syscall6");
+    _game_version = pkgi_get_game_version(_item->partition, _item->titleid);
+    _comppack_versions = pkgi_get_comppack_versions(_item->partition, _item->titleid);
 }
 
 void GameView::start_download_package()
@@ -295,25 +278,6 @@ void GameView::cancel_download_package()
     _item->presence = PresenceUnknown;
 }
 
-void GameView::start_download_patch(const PatchInfo& patch_info)
-{
-    _downloader->add(DownloadItem{Patch,
-                                  _item->name,
-                                  _item->titleid,
-                                  patch_info.url,
-                                  std::vector<uint8_t>{},
-                                  // TODO sha1 check
-                                  std::vector<uint8_t>{},
-                                  false,
-                                  "ux0:",
-                                  ""});
-}
-
-void GameView::cancel_download_patch()
-{
-    _downloader->remove_from_queue(Patch, _item->titleid);
-}
-
 void GameView::start_download_comppack(bool patch)
 {
     const auto& entry = patch ? _patch_comppack : _base_comppack;
@@ -325,7 +289,10 @@ void GameView::start_download_comppack(bool patch)
                                   std::vector<uint8_t>{},
                                   std::vector<uint8_t>{},
                                   false,
-                                  "ux0:",
+                                  _config->install_psv_location,
+                                  _config->install_psp_game_path,
+                                  _config->install_psp_iso_path,
+                                  _config->install_psp_psx_path,
                                   entry->app_version});
 }
 

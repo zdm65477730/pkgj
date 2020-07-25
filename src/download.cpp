@@ -25,6 +25,7 @@ enum ContentType
     CONTENT_TYPE_PSP_GAME = 7,
     CONTENT_TYPE_PSP_GAME_ALT = 14,
     CONTENT_TYPE_PSP_MINI_GAME = 15,
+    CONTENT_TYPE_PSP_NEOGEO_GAME = 16,
     CONTENT_TYPE_PSV_GAME = 21, // or update
     CONTENT_TYPE_PSV_DLC = 22,
     CONTENT_TYPE_PSM_GAME = 24,
@@ -596,8 +597,9 @@ int Download::download_head(const uint8_t* rif)
             content_type = get32be(head.data() + offset + 8);
             if (content_type != CONTENT_TYPE_PSX_GAME &&
                 content_type != CONTENT_TYPE_PSP_GAME &&
-                content_type != CONTENT_TYPE_PSP_MINI_GAME &&
                 content_type != CONTENT_TYPE_PSP_GAME_ALT &&
+                content_type != CONTENT_TYPE_PSP_MINI_GAME &&
+                content_type != CONTENT_TYPE_PSP_NEOGEO_GAME &&
                 content_type != CONTENT_TYPE_PSM_GAME &&
                 content_type != CONTENT_TYPE_PSM_GAME_ALT &&
                 content_type != CONTENT_TYPE_PSV_GAME &&
@@ -803,6 +805,7 @@ void Download::download_file_content_to_edat(uint64_t item_size)
 
     uint32_t key_index = get32le(key_header + 4);
     uint32_t drm_type = get32le(key_header + 8);
+
     if (key_index != 1 || drm_type != 1)
         throw DownloadError("不支持的EDAT文件, key/drm类型错误");
 
@@ -821,6 +824,7 @@ void Download::download_file_content_to_edat(uint64_t item_size)
         throw DownloadError("不支持的EDAT文件, 数据/偏移量错误");
 
     init_psp_decrypt(&psp_key, psp_iv, 0, mac, key_header, 0x70, 0x30);
+
     static constexpr uint32_t block_size = 0x10;
     uint32_t block_count = ((data_size + (block_size - 1)) / block_size);
 
@@ -851,7 +855,6 @@ void Download::download_file_content_to_edat(uint64_t item_size)
 
     if (!pkgi_write(item_file, data.data(), data.size()))
         throw DownloadError(fmt::format("无法写入至 %s", item_path));
-
     skip_to_file_offset(item_size);
 }
 
@@ -925,7 +928,8 @@ int Download::download_files(void)
         if (content_type == CONTENT_TYPE_PSX_GAME ||
             content_type == CONTENT_TYPE_PSP_GAME ||
             content_type == CONTENT_TYPE_PSP_GAME_ALT ||
-            content_type == CONTENT_TYPE_PSP_MINI_GAME)
+            content_type == CONTENT_TYPE_PSP_MINI_GAME ||
+            content_type == CONTENT_TYPE_PSP_NEOGEO_GAME)
         {
             const std::string prefix = "USRDIR/CONTENT";
             if (item_name.substr(0, prefix.size()) == prefix)
@@ -944,12 +948,22 @@ int Download::download_files(void)
                 continue;
             }
         }
-        else if (
-                content_type == CONTENT_TYPE_PSM_GAME ||
-                content_type == CONTENT_TYPE_PSM_GAME_ALT)
+        else if (content_type == CONTENT_TYPE_PSM_GAME
+                || content_type == CONTENT_TYPE_PSM_GAME_ALT)
         {
-            // skip "content/" prefix
-            item_path = fmt::format("{}/RO/{}", root, item_name.c_str() + 8);
+            // skip "contents/" prefix
+            std::string pre = "contents/";
+            if (item_name.compare(0, pre.size(), pre) == 0)
+                item_name = item_name.substr(pre.size());
+            else
+                item_name = item_name.substr(pre.size() - 1);
+
+            // put runtime dir outside of RO
+            pre = "runtime";
+            if (item_name.compare(0, pre.size(), pre) == 0)
+                item_path = fmt::format("{}/{}", root, item_name);
+            else
+                item_path = fmt::format("{}/RO/{}", root, item_name);
         }
         else
             item_path = fmt::format("{}/{}", root, item_name);
@@ -985,7 +999,8 @@ int Download::download_files(void)
 
         if (content_type == CONTENT_TYPE_PSP_GAME ||
             content_type == CONTENT_TYPE_PSP_GAME_ALT ||
-            content_type == CONTENT_TYPE_PSP_MINI_GAME)
+            content_type == CONTENT_TYPE_PSP_MINI_GAME ||
+            content_type == CONTENT_TYPE_PSP_NEOGEO_GAME)
         {
             if (save_as_iso)
             {
@@ -994,7 +1009,8 @@ int Download::download_files(void)
                 else
                     skip_to_file_offset(encrypted_size);
             }
-            else if (item_name != "USRDIR/CONTENT/DOCUMENT.DAT" &&
+            else if (
+                    item_name != "USRDIR/CONTENT/DOCUMENT.DAT" &&
                     item_name != "USRDIR/CONTENT/DOCINFO.EDAT" &&
                     (ends_with(item_name, ".EDAT") ||
                      ends_with(item_name, ".edat")))
@@ -1144,6 +1160,9 @@ int Download::adjust_psm_files(void)
 
     LOG("creating RW/System/content_id");
     char content_data[0x30];
+    if (strlen(download_content) >= sizeof(content_data))
+        return 0;
+
     strncpy(content_data, download_content, sizeof(content_data));
     const auto content_id = fmt::format("{}/RW/System/content_id", root);
     pkgi_save(content_id.c_str(), content_data, 0x30);
@@ -1197,11 +1216,11 @@ int Download::pkgi_download(
             return 0;
         if (content_type != CONTENT_TYPE_PSX_GAME &&
             content_type != CONTENT_TYPE_PSP_GAME &&
-            content_type != CONTENT_TYPE_PSP_MINI_GAME &&
-            content_type != CONTENT_TYPE_PSM_GAME &&
             content_type != CONTENT_TYPE_PSP_GAME_ALT &&
+            content_type != CONTENT_TYPE_PSP_MINI_GAME &&
+            content_type != CONTENT_TYPE_PSP_NEOGEO_GAME &&
+            content_type != CONTENT_TYPE_PSM_GAME &&
             content_type != CONTENT_TYPE_PSM_GAME_ALT)
-            
         {
             if (!create_stat())
                 return 0;
@@ -1230,7 +1249,8 @@ int Download::pkgi_download(
         }
         if (content_type == CONTENT_TYPE_PSP_GAME ||
             content_type == CONTENT_TYPE_PSP_GAME_ALT ||
-            content_type == CONTENT_TYPE_PSP_MINI_GAME)
+            content_type == CONTENT_TYPE_PSP_MINI_GAME ||
+            content_type == CONTENT_TYPE_PSP_NEOGEO_GAME)
         {
             // we can leave them, but they're useless and they conflict when
             // installing DLCs
