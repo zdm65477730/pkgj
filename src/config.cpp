@@ -5,6 +5,7 @@
 #include "file.hpp"
 #include "pkgi.hpp"
 
+#if 0
 static constexpr char default_psv_games_url[] = "http://nopaystation.com/tsv/PSV_GAMES.tsv";
 static constexpr char default_psv_dlcs_url[] = "http://nopaystation.com/tsv/PSV_DLCS.tsv";
 static constexpr char default_psv_demos_url[] = "http://nopaystation.com/tsv/PSV_DEMOS.tsv";
@@ -13,6 +14,16 @@ static constexpr char default_psx_games_url[] = "http://nopaystation.com/tsv/PSX
 static constexpr char default_psp_games_url[] = "http://nopaystation.com/tsv/PSP_GAMES.tsv";
 static constexpr char default_psp_dlcs_url[] = "http://nopaystation.com/tsv/PSP_DLCS.tsv";
 static constexpr char default_psm_games_url[] = "http://nopaystation.com/tsv/PSM_GAMES.tsv";
+#endif
+
+static constexpr char default_psv_games_url[] = "http://47.100.93.203/tsv/titles_psvgames.tsv";
+static constexpr char default_psv_dlcs_url[] = "http://47.100.93.203/tsv/titles_psvdlcs.tsv";
+static constexpr char default_psv_demos_url[] = "http://47.100.93.203/tsv/titles_psvdemos.tsv";
+static constexpr char default_psv_themes_url[] = "http://47.100.93.203/tsv/titles_psvthemes.tsv";
+static constexpr char default_psx_games_url[] = "http://47.100.93.203/tsv/titles_psxgames.tsv";
+static constexpr char default_psp_games_url[] = "http://47.100.93.203/tsv/titles_pspgames.tsv";
+static constexpr char default_psp_dlcs_url[] = "http://47.100.93.203/tsv/titles_pspdlcs.tsv";
+static constexpr char default_psm_games_url[] = "http://47.100.93.203/tsv/titles_psmgames.tsv";
 
 static constexpr char default_comppack_url[] = {0};
 static constexpr char default_install_psp_game_path[] = "pspemu/PSP/GAME";
