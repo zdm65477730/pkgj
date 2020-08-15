@@ -2,6 +2,11 @@
 
 set -xe
 
+if [[ -e $HOME/.conan/profiles/vita ]] ; then
+  echo "ENV has already setup, continue..."
+  exit 0
+fi
+
 pipenv install
 
 # create home dirs

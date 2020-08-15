@@ -113,24 +113,24 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     if ((err = sceHttpSendRequest(req, NULL, 0)) < 0)
     {
         std::string err_msg;
-        switch (err)
+        switch (static_cast<uint32_t>(err))
         {
-            case 0x80431063:
+            case 0x80431063UL:
                 err_msg = "网络错误";
                 break;
-            case 0x80431068:
+            case 0x80431068UL:
                 err_msg = "网络超时";
                 break;
-            case 0x80431082:
+            case 0x80431082UL:
                 err_msg = "请求被阻止";
                 break;
-            case 0x80436007:
+            case 0x80436007UL:
                 err_msg = "主机未找到";
                 break;
-            case 0x80431084:
+            case 0x80431084UL:
                 err_msg = "代理错误";
                 break;
-            case 0x80431075:
+            case 0x80431075UL:
                 err_msg = "SSL错误";
                 break;
             default:
