@@ -179,15 +179,15 @@ int pkgi_is_latin_char(const unsigned int c) {
     return 0;
 }
 
-int pkgi_is_chinese_char(const unsigned int c) {
+int pkgi_is_chinese_char(const unsigned int c)
 {
     unsigned char lo = 0, hi = 0;
     lo = (unsigned char)(c & 0xFF);
     hi = (unsigned char)((c & 0xFF00) >> 8);
-    if(c < 0x81 || lo > 0xFE) return false; 
-    if(lo >= 0xA1 && lo <= 0xA9) return false;
-    if(hi < 0x40 || hi == 0xFF || hi == 0x7F) return false;
-    return true;
+    if(c < 0x81 || lo > 0xFE) return 0; 
+    if(lo >= 0xA1 && lo <= 0xA9) return 0;
+    if(hi < 0x40 || hi == 0xFF || hi == 0x7F) return 0;
+    return 1;
 }
 
 static void pkgi_start_debug_log(void)
