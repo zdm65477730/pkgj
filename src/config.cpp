@@ -25,14 +25,14 @@ static constexpr char default_psp_dlcs_url[] = "http://47.100.93.203/tsv/titles_
 static constexpr char default_psm_games_url[] = "http://47.100.93.203/tsv/titles_psmgames.tsv";
 #endif
 
-static constexpr char default_psv_games_url[] = "https://github.com/zdm65477730/pkgj/raw/master/assets/titles_psvgames.tsv";
-static constexpr char default_psv_dlcs_url[] = "https://github.com/zdm65477730/pkgj/raw/master/assets/tsv/titles_psvdlcs.tsv";
-static constexpr char default_psv_demos_url[] = "https://github.com/zdm65477730/pkgj/raw/master/assets/tsv/titles_psvdemos.tsv";
-static constexpr char default_psv_themes_url[] = "https://github.com/zdm65477730/pkgj/raw/master/assets/tsv/titles_psvthemes.tsv";
-static constexpr char default_psx_games_url[] = " https://github.com/zdm65477730/pkgj/raw/master/assets/tsv/titles_psxgames.tsv";
-static constexpr char default_psp_games_url[] = " https://github.com/zdm65477730/pkgj/raw/master/assets/tsv/titles_pspgames.tsv";
-static constexpr char default_psp_dlcs_url[] = " https://github.com/zdm65477730/pkgj/raw/master/assets/tsv/titles_pspdlcs.tsv";
-static constexpr char default_psm_games_url[] = " https://github.com/zdm65477730/pkgj/raw/master/assets/tsv/titles_psmgames.tsv";
+static constexpr char default_psv_games_url[] = "https://github.com/zdm65477730/pkgj/releases/download/v0.55/titles_psvgames.tsv";
+static constexpr char default_psv_dlcs_url[] = "https://github.com/zdm65477730/pkgj/releases/download/v0.55/titles_psvdlcs.tsv";
+static constexpr char default_psv_demos_url[] = "https://github.com/zdm65477730/pkgj/releases/download/v0.55/titles_psvdemos.tsv";
+static constexpr char default_psv_themes_url[] = "https://github.com/zdm65477730/pkgj/releases/download/v0.55/titles_psvthemes.tsv";
+static constexpr char default_psx_games_url[] = "https://github.com/zdm65477730/pkgj/releases/download/v0.55/titles_psxgames.tsv";
+static constexpr char default_psp_games_url[] = "https://github.com/zdm65477730/pkgj/releases/download/v0.55/titles_pspgames.tsv";
+static constexpr char default_psp_dlcs_url[] = "https://github.com/zdm65477730/pkgj/releases/download/v0.55/titles_pspdlcs.tsv";
+static constexpr char default_psm_games_url[] = "https://github.com/zdm65477730/pkgj/releases/download/v0.55/titles_psmgames.tsv";
 
 static constexpr char default_comppack_url[] = {0};
 static constexpr char default_install_psp_game_path[] = "pspemu/PSP/GAME";

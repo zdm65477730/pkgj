@@ -126,6 +126,7 @@ vita_create_vpk(${PROJECT_NAME}.vpk ${VITA_TITLEID} eboot.bin
        assets/sce_sys/livearea/contents/bg.png sce_sys/livearea/contents/bg.png
        assets/sce_sys/livearea/contents/startup.png sce_sys/livearea/contents/startup.png
        ${CMAKE_CURRENT_BINARY_DIR}/assets/sce_sys/livearea/contents/template.xml sce_sys/livearea/contents/template.xml
+       assets/fonts/font.pgf fonts/font.pgf assets/configs/config_template.txt configs/config_template.txt
 )
 
 add_custom_target(send

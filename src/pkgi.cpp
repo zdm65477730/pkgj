@@ -1110,7 +1110,6 @@ int main()
         // Build and load the texture atlas into a texture
         uint32_t* pixels = NULL;
         int width, height;
-#if 0
         if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/ltn0.pvf",
                     20.0f,
@@ -1123,7 +1122,6 @@ int main()
                     0,
                     io.Fonts->GetGlyphRangesJapanese()))
             throw std::runtime_error("无法加载jpn0.pvf");
-#endif
 		if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/cn0.pvf",
                     20.0f,
