@@ -46,10 +46,10 @@ if [[ -n "$TRAVIS_TAG" ]]; then
         "  IdentityFile $SSH_FILE" \
         "  LogLevel ERROR" >> ~/.ssh/config
 
-    git config --global user.name "Travis"
-    git config --global user.email "travis"
+    git config --global user.name "zdm65477730"
+    git config --global user.email "zdm65477730@126.com"
 
-    git remote set-url origin git@github.com:blastrock/pkgj.git
+    git remote set-url origin git@github.com:zdm65477730/pkgj.git
 
     git fetch origin last:refs/remotes/origin/last --depth 1
     git checkout -b last origin/last

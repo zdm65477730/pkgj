@@ -36,5 +36,5 @@ deploy:
 
 cache:
   directories:
-    - /home/travis/.conan/data
-    - /home/travis/.local/share/virtualenvs
+    - /home/edanmzh/.conan/data
+    - /home/edanmzh/.local/share/virtualenvs
