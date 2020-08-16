@@ -149,7 +149,7 @@ int pkgi_memequ(const void* a, const void* b, uint32_t size)
     return memcmp(a, b, size) == 0;
 }
 
-if 0
+#if 0
 int pkgi_is_korean_char(const unsigned int c) {
     unsigned short ch = c;
     // hangul compatibility jamo block
