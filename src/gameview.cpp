@@ -12,8 +12,8 @@ extern "C"
 
 namespace
 {
-constexpr unsigned GameViewWidth = VITA_WIDTH * 0.8;
-constexpr unsigned GameViewHeight = VITA_HEIGHT * 0.8;
+constexpr unsigned GameViewWidth = VITA_WIDTH * 0.9;
+constexpr unsigned GameViewHeight = VITA_HEIGHT * 0.9;
 }
 
 GameView::GameView(
@@ -53,6 +53,7 @@ void GameView::render()
 
     ImGui::PushTextWrapPos(_image_fetcher.get_texture() == nullptr ?
         0.f : GameViewWidth - 300.f);
+
     ImGui::Text(fmt::format("当前系统固件版本: {}", pkgi_get_system_version())
                         .c_str());
     ImGui::Text(

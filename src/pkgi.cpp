@@ -1107,9 +1107,18 @@ int main()
         imgui_context->NavDisableHighlight = false;
         ImGuiIO& io = ImGui::GetIO();
 
+        ImVector<ImWchar> ranges;
+        ImFontGlyphRangesBuilder builder;
+        builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+        builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+        //builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+        builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+        builder.BuildRanges(&ranges);
+
         // Build and load the texture atlas into a texture
         uint32_t* pixels = NULL;
         int width, height;
+#if 0
         if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/ltn0.pvf",
                     20.0f,
@@ -1124,10 +1133,18 @@ int main()
             throw std::runtime_error("无法加载jpn0.pvf");
 		if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/cn0.pvf",
-                    20.0f,
+                    16.0f,
                     0,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
             throw std::runtime_error("无法加载cn0.pvf");
+#endif
+        if (!io.Fonts->AddFontFromFileTTF(
+                    "sa0:/data/font/pvf/cn1.pvf",
+                    20.0f,
+                    NULL,
+                    ranges.Data))
+            throw std::runtime_error("无法加载cn1.pvf");
+
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);
