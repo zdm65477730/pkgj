@@ -572,7 +572,7 @@ void pkgi_start(void)
     };
     g_font = vita2d_load_system_pgf(3, pgf_confs);
 #endif
-	g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00000/font.pgf");
+	g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00000/fonts/font.pgf");
 
     g_time = sceKernelGetProcessTimeWide();
 
