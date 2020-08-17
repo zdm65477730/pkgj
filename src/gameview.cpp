@@ -53,7 +53,6 @@ void GameView::render()
 
     ImGui::PushTextWrapPos(_image_fetcher.get_texture() == nullptr ?
         0.f : GameViewWidth - 300.f);
-
     ImGui::Text(fmt::format("当前系统固件版本: {}", pkgi_get_system_version())
                         .c_str());
     ImGui::Text(

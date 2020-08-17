@@ -15,6 +15,7 @@ static constexpr char default_psp_games_url[] = "http://nopaystation.com/tsv/PSP
 static constexpr char default_psp_dlcs_url[] = "http://nopaystation.com/tsv/PSP_DLCS.tsv";
 static constexpr char default_psm_games_url[] = "http://nopaystation.com/tsv/PSM_GAMES.tsv";
 #endif
+
 static constexpr char default_psv_games_url[] = "http://47.100.93.203/tsv/titles_psvgames.tsv";
 static constexpr char default_psv_dlcs_url[] = "http://47.100.93.203/tsv/titles_psvdlcs.tsv";
 static constexpr char default_psv_demos_url[] = "http://47.100.93.203/tsv/titles_psvdemos.tsv";

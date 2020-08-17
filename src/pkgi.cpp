@@ -1110,43 +1110,34 @@ int main()
         // Build and load the texture atlas into a texture
         uint32_t* pixels = NULL;
         int width, height;
-
 #if 0
-        ImVector<ImWchar> ranges;
-        ImFontGlyphRangesBuilder builder;
-        //builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
-        //builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
-        //builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
-        builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
-        builder.BuildRanges(&ranges);
-        if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/cn0.pvf",
-                    20.0f,
-                    NULL,
-                    ranges.Data))
-            throw std::runtime_error("无法加载cn0.pvf");
-#endif
-
         if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/ltn0.pvf",
                     20.0f,
                     0,
                     io.Fonts->GetGlyphRangesDefault()))
             throw std::runtime_error("无法加载ltn0.pvf");
-#if 0
         if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/jpn0.pvf",
                     20.0f,
                     0,
                     io.Fonts->GetGlyphRangesJapanese()))
             throw std::runtime_error("无法加载jpn0.pvf");
+
+        ImVector<ImWchar> ranges;
+        ImFontAtlas::GlyphRangesBuilder builder; //ImFontGlyphRangesBuilder builder;
+        //builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+        //builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+        //builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+        builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
+        builder.BuildRanges(&ranges);
+#endif
 		if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/cn0.pvf",
+                    "sa0:/data/font/pvf/cn1.pvf",
                     18.0f,
                     0,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("无法加载cn0.pvf");
-#endif
+            throw std::runtime_error("无法加载cn1.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);
