@@ -43,7 +43,7 @@ void GameView::render()
     char size_str[64];
     pkgi_friendly_size(size_str, sizeof(size_str), _item->size);
     ImGui::Begin(
-            fmt::format("{} ({})###gameview", _item->titleid, size_str)
+            fmt::format("{} ({})###gameview", _item->name, _item->titleid)
                     .c_str(),
             nullptr,
             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |

@@ -73,7 +73,7 @@ void update_thread()
     try
     {
         if (!pkgi_is_module_present("NoNpDrm"))
-            pkgi_dialog_error("NoNpDrm没有找到。游戏将不能安装或运行。");
+            pkgi_dialog_error("未找到NoNpDrm。游戏将不能安装或运行。");
 
         while (pkgi_dialog_is_open()) {
             pkgi_sleep(20);

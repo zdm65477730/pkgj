@@ -211,8 +211,8 @@ void pkgi_refresh_thread(void)
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
                         "正在刷新 游戏本体兼容包 [{}/{}]",
-                        mode_count - 1,
-                        mode_count);
+                        ModeCount + 2 - 1,
+                        ModeCount + 2);
             }
             {
                 auto const http = std::make_unique<VitaHttp>();
@@ -223,8 +223,8 @@ void pkgi_refresh_thread(void)
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
                         "正在刷新 游戏更新兼容包 [{}/{}]",
-                        mode_count,
-                        mode_count);
+                        ModeCount + 2,
+                        ModeCount + 2);
             }
             {
                 auto const http = std::make_unique<VitaHttp>();
@@ -679,10 +679,8 @@ void pkgi_do_refresh(void)
 
 void pkgi_do_head(void)
 {
-    const char* version = PKGI_VERSION;
-
     char title[256];
-    pkgi_snprintf(title, sizeof(title), "PKGj v%s", version);
+    pkgi_snprintf(title, sizeof(title), "PKGj v%s", PKGI_VERSION);
     pkgi_draw_text(0, 0, PKGI_COLOR_TEXT_HEAD, title);
 
     pkgi_draw_rect(
@@ -1092,12 +1090,12 @@ int main()
 #endif
         auto const path = fmt::format("{}/font.ttf", pkgi_get_config_folder());
         if (pkgi_file_exists(path)) {
-		    if (!io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f, nullptr,
+            if (!io.Fonts->AddFontFromFileTTF(path.c_str(), 20.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
             throw std::runtime_error(fmt::format("无法加载 {}", path));
         }
         else if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/cn1.pvf", 18.0f, nullptr,
+                    "sa0:/data/font/pvf/cn1.pvf", 20.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
             throw std::runtime_error("无法加载 cn1.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
