@@ -162,7 +162,7 @@ void init_download_class(scedownload_class* sceDownloadObj)
 
     if (res != 0xc4)
         throw formatEx<std::runtime_error>(
-                "SceIpmi_4E255C31失败: {:#08x}", static_cast<uint32_t>(res));
+                "接口4E255C31失败: {:#08x}", static_cast<uint32_t>(res));
 
     sceDownloadObj->class_header = (scedownload_class_header*)new char[0x18]();
 
@@ -177,7 +177,7 @@ void init_download_class(scedownload_class* sceDownloadObj)
             sceDownloadObj->class_header->buf10000);
     if (res != 0)
         throw formatEx<std::runtime_error>(
-                "SceIpmi_B282B430初始化失败: {:#08x}",
+                "接口B282B430初始化失败: {:#08x}",
                 static_cast<uint32_t>(res));
 
     sceDownloadObj->init =
@@ -193,7 +193,7 @@ void init_download_class(scedownload_class* sceDownloadObj)
             2);
     if (res != 0)
         throw formatEx<std::runtime_error>(
-                "SceDownload初始化失败: {:#08x}", static_cast<uint32_t>(res));
+                "下载初始化失败: {:#08x}", static_cast<uint32_t>(res));
 }
 
 void scedownload_start_with_rif(

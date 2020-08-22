@@ -73,7 +73,7 @@ void update_thread()
     try
     {
         if (!pkgi_is_module_present("NoNpDrm"))
-            pkgi_dialog_error("未找到NoNpDrm。游戏将不能安装或运行。");
+            pkgi_dialog_error("未找到 NoNpDrm 无法安装游戏");
 
         while (pkgi_dialog_is_open()) {
             pkgi_sleep(20);
@@ -98,7 +98,7 @@ void update_thread()
 
             pkgi_dialog_question(
                     fmt::format(
-                            "新的PKGj版本{}可用!\n是否立即"
+                            "PKGj中文版现已更新至{}版本!\n是否立即"
                             "下载?",
                             last_version)
                             .c_str(),

@@ -12,17 +12,17 @@ export VITASDK=$(pipenv run conan info vitasdk-toolchain/1199@blastrock/pkgj --p
 export CC=gcc-7
 export CXX=g++-7
 
-#mkdir buildhost
-#cd buildhost
-#pipenv run conan install ../.. --build missing -s build_type=RelWithDebInfo -s compiler=gcc -s compiler.version=7 -s compiler.libcxx=libstdc++11
-#cmake -GNinja ../.. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHOST_BUILD=ON -DPKGI_ENABLE_LOGGING=ON
-#ninja
-#cd ..
+# mkdir buildhost
+# cd buildhost
+# pipenv run conan install ../.. --build missing -s build_type=RelWithDebInfo -s compiler=gcc -s compiler.version=7 -s compiler.libcxx=libstdc++11
+# cmake -GNinja ../.. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHOST_BUILD=ON -DPKGI_ENABLE_LOGGING=ON
+# ninja
+# cd ..
 
 mkdir build
 cd build
 pipenv run conan install ../.. --build missing -pr vita -s build_type=RelWithDebInfo
-cmake -GNinja ../.. -DCMAKE_BUILD_TYPE=RelWithDebInfo
+cmake -GNinja ../.. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPKGI_ENABLE_LOGGING=ON
 ninja
 cp pkgj pkgj.elf
 cd ../..

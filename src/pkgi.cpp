@@ -201,9 +201,10 @@ void pkgi_refresh_thread(void)
                         mode_count);
             }
             auto const http = std::make_unique<VitaHttp>();
+            LOG("updating");
             db->update(mode, http.get(), url);
         }
-        int plugin_present = pkgi_is_module_present("ref00d") || 
+        int plugin_present = pkgi_is_module_present("ref00d") ||
             pkgi_is_module_present("0syscall6");
         if (!config.comppack_url.empty() && !plugin_present)
         {
@@ -211,8 +212,8 @@ void pkgi_refresh_thread(void)
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
                         "正在刷新 游戏本体兼容包 [{}/{}]",
-                        ModeCount + 2 - 1,
-                        ModeCount + 2);
+                        mode_count - 1,
+                        mode_count);
             }
             {
                 auto const http = std::make_unique<VitaHttp>();
@@ -223,8 +224,8 @@ void pkgi_refresh_thread(void)
                 std::lock_guard<Mutex> lock(refresh_mutex);
                 current_action = fmt::format(
                         "正在刷新 游戏更新兼容包 [{}/{}]",
-                        ModeCount + 2,
-                        ModeCount + 2);
+                        mode_count,
+                        mode_count);
             }
             {
                 auto const http = std::make_unique<VitaHttp>();
@@ -298,6 +299,35 @@ void pkgi_install_package(Downloader& downloader, DbItem* item)
 
     pkgi_start_download(downloader, *item);
     item->presence = PresenceUnknown;
+}
+
+void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
+{
+    if (size <= 0)
+    {
+        text[0] = 0;
+    }
+    else if (size < 1000LL)
+    {
+        pkgi_snprintf(text, textlen, "%u " PKGI_UTF8_B, (uint32_t)size);
+    }
+    else if (size < 1000LL * 1000)
+    {
+        pkgi_snprintf(text, textlen, "%.2f " PKGI_UTF8_KB, size / 1024.f);
+    }
+    else if (size < 1000LL * 1000 * 1000)
+    {
+        pkgi_snprintf(
+                text, textlen, "%.2f " PKGI_UTF8_MB, size / 1024.f / 1024.f);
+    }
+    else
+    {
+        pkgi_snprintf(
+                text,
+                textlen,
+                "%.2f " PKGI_UTF8_GB,
+                size / 1024.f / 1024.f / 1024.f);
+    }
 }
 
 void pkgi_set_mode(Mode set_mode)
@@ -996,7 +1026,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
                 pkgi_dialog_message(
                         fmt::format(
                                 "已将 {} 添加至LiveArea下载队列",
-                                item.titleid)
+                                item.name)
                                 .c_str());
             }
             else
@@ -1028,7 +1058,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
     catch (const std::exception& e)
     {
         pkgi_dialog_error(
-                fmt::format("{}安装失败: {}", item.titleid, e.what())
+                fmt::format("{}安装失败: {}", item.name, e.what())
                         .c_str());
     }
 }
@@ -1090,14 +1120,14 @@ int main()
 #endif
         auto const path = fmt::format("{}/font.ttf", pkgi_get_config_folder());
         if (pkgi_file_exists(path)) {
-            if (!io.Fonts->AddFontFromFileTTF(path.c_str(), 20.0f, nullptr,
+            if (!io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
             throw std::runtime_error(fmt::format("无法加载 {}", path));
         }
         else if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/cn0.pvf", 20.0f, nullptr,
+                    "sa0:/data/font/pvf/cn1.pvf", 18.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("无法加载 cn0.pvf");
+            throw std::runtime_error("无法加载 cn1.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);

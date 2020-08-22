@@ -1,4 +1,0 @@
-install_psp_psx_location ux0:
-sort region
-order asc
-filter ASA,JPN,USA
