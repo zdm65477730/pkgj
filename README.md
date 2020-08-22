@@ -48,6 +48,7 @@ pkgj附带有效的默认URL。如果您想更改某些设置，可以通过ux0�
 | `install_psp_psx_location uma0：`|在“ uma0：”上安装PSP和PSX游戏。
 | `no_version_check 1` |启动PKGj时不检查更新。
 
+pkgj 读取 ux0:pkgj/font.ttf 作为游戏列表显示字体 若文件不存则使用系统字体
 ＃问答
 
 1.在哪里删除中断/失败的下载以释放空间（仅PSV更新/ PSX / PSP游戏）？

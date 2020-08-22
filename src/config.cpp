@@ -33,7 +33,6 @@ static constexpr char default_psx_games_url[] = "http://pkgj.oss-accelerate.aliy
 static constexpr char default_psp_games_url[] = "http://pkgj.oss-accelerate.aliyuncs.com/tsv/titles_pspgames.tsv";
 static constexpr char default_psp_dlcs_url[] = "http://pkgj.oss-accelerate.aliyuncs.com/tsv/titles_pspdlcs.tsv";
 static constexpr char default_psm_games_url[] = "http://pkgj.oss-accelerate.aliyuncs.com/tsv/titles_psmgames.tsv";
-
 static constexpr char default_comppack_url[] = {0};
 static constexpr char default_install_psp_game_path[] = "pspemu/PSP/GAME";
 static constexpr char default_install_psp_iso_path[] =  "pspemu/ISO";

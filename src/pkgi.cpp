@@ -300,35 +300,6 @@ void pkgi_install_package(Downloader& downloader, DbItem* item)
     item->presence = PresenceUnknown;
 }
 
-void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
-{
-    if (size <= 0)
-    {
-        text[0] = 0;
-    }
-    else if (size < 1000LL)
-    {
-        pkgi_snprintf(text, textlen, "%u " PKGI_UTF8_B, (uint32_t)size);
-    }
-    else if (size < 1000LL * 1000)
-    {
-        pkgi_snprintf(text, textlen, "%.2f " PKGI_UTF8_KB, size / 1024.f);
-    }
-    else if (size < 1000LL * 1000 * 1000)
-    {
-        pkgi_snprintf(
-                text, textlen, "%.2f " PKGI_UTF8_MB, size / 1024.f / 1024.f);
-    }
-    else
-    {
-        pkgi_snprintf(
-                text,
-                textlen,
-                "%.2f " PKGI_UTF8_GB,
-                size / 1024.f / 1024.f / 1024.f);
-    }
-}
-
 void pkgi_set_mode(Mode set_mode)
 {
     mode = set_mode;
