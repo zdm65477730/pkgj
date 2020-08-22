@@ -1099,7 +1099,7 @@ int main()
         else if (!io.Fonts->AddFontFromFileTTF(
                     "sa0:/data/font/pvf/cn1.pvf", 18.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("无法加载 cn0.pvf");
+            throw std::runtime_error("无法加载 cn1.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);
