@@ -40,8 +40,10 @@ void GameView::render()
                    (VITA_HEIGHT - GameViewHeight) / 2));
     ImGui::SetNextWindowSize(ImVec2(GameViewWidth, GameViewHeight), 0);
 
+    char size_str[64];
+    pkgi_friendly_size(size_str, sizeof(size_str), _item->size);
     ImGui::Begin(
-            fmt::format("{} ({})###gameview", _item->name, _item->titleid)
+            fmt::format("{} ({})###gameview", _item->titleid, size_str)
                     .c_str(),
             nullptr,
             ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
@@ -176,21 +178,22 @@ void GameView::printDiagnostic()
         {
             if (_refood_present)
                 ImGui::Text(
-                        "- 游戏将通过reF00D插件引导运行");
+                        "- 游戏将通过 reF00D 插件引导运行, "
+                        "安装兼容包可有效缩短游戏启动所需时间");
             else if (_0syscall6_present)
                 ImGui::Text(
-                        "- 游戏将通过0syscall6插件引导运行");
+                        "- 游戏将通过 0syscall6 插件引导运行");
             else
                 printError(
-                        "- 当前系统固件版本低于游戏运行所需固件版本, 必须"
-                        "安装兼容包或安装reF00D或0syscall6插件");
+                        "- 当前系统固件版本低于游戏运行所需固件版本,"
+                        "安装兼容包或安装 reF00D 插件或 0syscall6 插件");
         }
     }
     else
     {
         ImGui::Text(
-                "- 当前系统固件版本已高于游戏运行所需固件版本, 无需安装兼容"
-                "包");
+                "- 当前系统固件版本已高于游戏运行所需固件版本,"
+                "无需安装兼容包");
     }
 
     if (_comppack_versions.present && _comppack_versions.base.empty() &&

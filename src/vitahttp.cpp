@@ -27,6 +27,11 @@ static pkgi_http g_http[4];
 
 VitaHttp::~VitaHttp()
 {
+    close();
+}
+
+void VitaHttp::close()
+{
     if (_http)
     {
         LOG("http close");
@@ -34,10 +39,11 @@ VitaHttp::~VitaHttp()
         sceHttpDeleteConnection(_http->conn);
         sceHttpDeleteTemplate(_http->tmpl);
         _http->used = 0;
+        _http = nullptr;
     }
 }
 
-void VitaHttp::start(const std::string& url, uint64_t offset)
+void VitaHttp::start(const std::string& url, uint64_t offset, bool head)
 {
     if (_http)
         throw HttpError("HTTP连接已启动");
@@ -87,7 +93,10 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
     };
 
     if ((req = sceHttpCreateRequestWithURL(
-                 conn, SCE_HTTP_METHOD_GET, url.c_str(), 0)) < 0)
+                 conn,
+                 head ? SCE_HTTP_METHOD_HEAD : SCE_HTTP_METHOD_GET,
+                 url.c_str(),
+                 0)) < 0)
         throw HttpError(fmt::format(
                 "sceHttpCreateRequestWithURL失败: {:#08x}",
                 static_cast<uint32_t>(req)));
@@ -99,7 +108,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
 
     int err;
 
-    if (offset != 0)
+    if (offset != 0 && !head)
     {
         char range[64];
         pkgi_snprintf(range, sizeof(range), "bytes=%llu-", offset);
@@ -122,10 +131,10 @@ void VitaHttp::start(const std::string& url, uint64_t offset)
                 err_msg = "网络超时";
                 break;
             case 0x80431082UL:
-                err_msg = "请求被阻止";
+                err_msg = "请求被阻塞";
                 break;
             case 0x80436007UL:
-                err_msg = "主机未找到";
+                err_msg = fmt::format("主机不存在, 建议删除 {} 后重试", pkgi_get_config_folder());
                 break;
             case 0x80431084UL:
                 err_msg = "代理错误";
@@ -218,6 +227,8 @@ void VitaHttp::check_status()
 
     LOGF("http status code = {}", status);
 
+    if (status == 404)
+        throw HttpError(fmt::format("未找到列表, 建议删除 {} 后重试", pkgi_get_config_folder()));
     if (status != 200 && status != 206)
         throw HttpError(fmt::format("HTTP状态异常: {}", status));
 }

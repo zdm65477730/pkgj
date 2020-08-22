@@ -85,7 +85,7 @@ void pkgi_install(const char* partition, const char* contentid)
     const auto res = scePromoterUtilityPromotePkgWithRif(path, 1);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "scePromoterUtilityPromotePkgWithRif失败: {:#08x}\n{}",
+                "调用scePromoterUtilityPromotePkgWithRif失败: {:#08x}\n{}",
                 static_cast<uint32_t>(res),
                 static_cast<uint32_t>(res) == 0x80870004
                         ? "请检查NoNpDrm插件安装是否正确"
@@ -103,7 +103,7 @@ void pkgi_install_update(const std::string& partition, const std::string& titlei
     const auto res = scePromoterUtilityPromotePkgWithRif(src.c_str(), 1);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "scePromoterUtilityPromotePkgWithRif失败: {:#08x}",
+                "调用scePromoterUtilityPromotePkgWithRif失败: {:#08x}",
                 static_cast<uint32_t>(res));
 }
 
@@ -176,7 +176,7 @@ void pkgi_install_psmgame(const char* partition, const char* contentid)
     int res = sceIoRename(src.c_str(), dest.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "无法重命名: {:#08x}", static_cast<uint32_t>(res));
+                "重命名失败: {:#08x}", static_cast<uint32_t>(res));
 
     LOGF("promoting psm game at {}", dest);
     ScePromoterUtilityImportParams promote_args;
@@ -190,7 +190,7 @@ void pkgi_install_psmgame(const char* partition, const char* contentid)
     res = scePromoterUtilityPromoteImport(&promote_args);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-            "scePromoterUtilityPromoteImport失败: {:#08x}",
+            "调用scePromoterUtilityPromoteImport失败: {:#08x}",
             static_cast<uint32_t>(res));
 }
 

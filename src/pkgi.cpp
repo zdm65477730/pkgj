@@ -12,6 +12,7 @@ extern "C"
 #include "download.hpp"
 #include "downloader.hpp"
 #include "gameview.hpp"
+#include "file.hpp"
 #include "imgui.hpp"
 #include "install.hpp"
 #include "menu.hpp"
@@ -30,9 +31,6 @@ extern "C"
 
 #include <cstddef>
 #include <cstring>
-
-#define PKGI_UPDATE_URL \
-    "https://api.github.com/repos/zdm65477730/pkgj/releases/latest"
 
 namespace
 {
@@ -205,7 +203,9 @@ void pkgi_refresh_thread(void)
             auto const http = std::make_unique<VitaHttp>();
             db->update(mode, http.get(), url);
         }
-        if (!config.comppack_url.empty())
+        int plugin_present = pkgi_is_module_present("ref00d") || 
+            pkgi_is_module_present("0syscall6");
+        if (!config.comppack_url.empty() && !plugin_present)
         {
             {
                 std::lock_guard<Mutex> lock(refresh_mutex);
@@ -398,7 +398,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
             }
         }
 
-        if (input->active & PKGI_BUTTON_LEFT)
+        if (input->active & (PKGI_BUTTON_LEFT | PKGI_BUTTON_LT))
         {
             uint32_t max_items =
                     avail_height / (font_height + PKGI_MAIN_ROW_PADDING) - 1;
@@ -420,7 +420,7 @@ void pkgi_do_main(Downloader& downloader, pkgi_input* input)
             }
         }
 
-        if (input->active & PKGI_BUTTON_RIGHT)
+        if (input->active & (PKGI_BUTTON_RIGHT | PKGI_BUTTON_RT))
         {
             uint32_t max_items =
                     avail_height / (font_height + PKGI_MAIN_ROW_PADDING) - 1;
@@ -888,7 +888,7 @@ void pkgi_do_tail(Downloader& downloader)
     std::string bottom_text;
     if (gameview || pkgi_dialog_is_open()) {
         bottom_text = fmt::format(
-                "{} select {} close",
+                "{} 选择 {} 关闭",
                 pkgi_get_ok_str(),
                 pkgi_get_cancel_str());
     }
@@ -1111,19 +1111,6 @@ int main()
         uint32_t* pixels = NULL;
         int width, height;
 #if 0
-        if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/ltn0.pvf",
-                    20.0f,
-                    0,
-                    io.Fonts->GetGlyphRangesDefault()))
-            throw std::runtime_error("无法加载ltn0.pvf");
-        if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/jpn0.pvf",
-                    20.0f,
-                    0,
-                    io.Fonts->GetGlyphRangesJapanese()))
-            throw std::runtime_error("无法加载jpn0.pvf");
-
         ImVector<ImWchar> ranges;
         ImFontAtlas::GlyphRangesBuilder builder; //ImFontGlyphRangesBuilder builder;
         //builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
@@ -1132,12 +1119,16 @@ int main()
         builder.AddRanges(io.Fonts->GetGlyphRangesChineseSimplifiedCommon());
         builder.BuildRanges(&ranges);
 #endif
-		if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/cn1.pvf",
-                    18.0f,
-                    0,
+        auto const path = fmt::format("{}/font.ttf", pkgi_get_config_folder());
+        if (pkgi_file_exists(path)) {
+		    if (!io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("无法加载cn1.pvf");
+            throw std::runtime_error(fmt::format("无法加载 {}", path));
+        }
+        else if (!io.Fonts->AddFontFromFileTTF(
+                    "sa0:/data/font/pvf/cn1.pvf", 18.0f, nullptr,
+                    io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
+            throw std::runtime_error("无法加载 cn0.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);

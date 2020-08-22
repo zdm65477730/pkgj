@@ -51,7 +51,7 @@ extern "C"
     extern SceUID _vshKernelSearchModuleByName(const char *name, SceUInt64 *unk);
 }
 
-static vita2d_pgf* g_font;
+static vita2d_font* g_font;
 
 static SceKernelLwMutexWork g_dialog_lock;
 static volatile int g_power_lock;
@@ -149,7 +149,6 @@ int pkgi_memequ(const void* a, const void* b, uint32_t size)
     return memcmp(a, b, size) == 0;
 }
 
-#if 0
 int pkgi_is_korean_char(const unsigned int c) {
     unsigned short ch = c;
     // hangul compatibility jamo block
@@ -167,6 +166,18 @@ int pkgi_is_korean_char(const unsigned int c) {
     return 0;
 }
 
+int pkgi_is_chinese_char(const unsigned int c) {
+    unsigned short ch = c;
+    // Hangul compatibility jamo block
+    if (0x3400 <= ch && ch <= 0x4DB5) {
+        return 1;
+    }
+    if (0x4E00 <= ch && ch <= 0x9FA5) {
+        return 1;
+    }
+    return 0;
+}
+
 int pkgi_is_latin_char(const unsigned int c) {
     unsigned short ch = c;
     // basic latin block + latin-1 supplement block
@@ -179,18 +190,6 @@ int pkgi_is_latin_char(const unsigned int c) {
     }
     return 0;
 }
-
-int pkgi_is_chinese_char(const unsigned int c)
-{
-    unsigned char lo = 0, hi = 0;
-    lo = (unsigned char)(c & 0xFF);
-    hi = (unsigned char)((c & 0xFF00) >> 8);
-    if(c < 0x81 || lo > 0xFE) return 0; 
-    if(lo >= 0xA1 && lo <= 0xA9) return 0;
-    if(hi < 0x40 || hi == 0xFF || hi == 0x7F) return 0;
-    return 1;
-}
-#endif
 
 static void pkgi_start_debug_log(void)
 {
@@ -562,18 +561,16 @@ void pkgi_start(void)
         sceKernelStartThread(power_thread, 0, NULL);
     }
 
-    vita2d_init_advanced(4 * 1024 * 1024);
-#if 0
-    vita2d_system_pgf_config pgf_confs[] = {
-        {SCE_FONT_LANGUAGE_KOREAN,  pkgi_is_korean_char},
-        {SCE_FONT_LANGUAGE_LATIN,   pkgi_is_latin_char},
-		//{SCE_FONT_LANGUAGE_CHINESE, pkgi_is_chinese_char},
-        {SCE_FONT_LANGUAGE_DEFAULT, NULL},
-    };
-    g_font = vita2d_load_system_pgf(sizeof(pgf_confs)/sizeof(vita2d_system_pgf_config), pgf_confs);
-#endif
-	g_font = vita2d_load_custom_pgf("ux0:app/PKGJ00000/fonts/font.pgf");
+    vita2d_init_advanced(16 * 1024 * 1024);
 
+    if (pkgi_is_unsafe_mode()) {
+        auto const path = fmt::format("{}/font.ttf", pkgi_get_config_folder());
+        if (pkgi_file_exists(path))
+            g_font = vita2d_load_font_file(path.c_str());
+    }
+
+    if (!g_font) 
+        g_font = vita2d_load_font_file("sa0:/data/font/pvf/cn0.pvf");
     g_time = sceKernelGetProcessTimeWide();
 
     sqlite3_rw_init();
@@ -640,7 +637,7 @@ void pkgi_end(void)
     pkgi_stop_debug_log();
 
     vita2d_fini();
-    vita2d_free_pgf(g_font);
+    vita2d_free_font(g_font);
 
     scePromoterUtilityExit();
 
@@ -686,6 +683,35 @@ uint64_t pkgi_get_free_space(const char* requested_partition)
     SceIoDevInfo info{};
     sceIoDevctl(requested_partition, 0x3001, NULL, 0, &info, sizeof(info));
     return info.free_size;
+}
+
+void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
+{
+    if (size <= 0)
+    {
+        text[0] = 0;
+    }
+    else if (size < 1000LL)
+    {
+        pkgi_snprintf(text, textlen, "%u " PKGI_UTF8_B, (uint32_t)size);
+    }
+    else if (size < 1000LL * 1000)
+    {
+        pkgi_snprintf(text, textlen, "%.2f " PKGI_UTF8_KB, size / 1024.f);
+    }
+    else if (size < 1000LL * 1000 * 1000)
+    {
+        pkgi_snprintf(
+                text, textlen, "%.2f " PKGI_UTF8_MB, size / 1024.f / 1024.f);
+    }
+    else
+    {
+        pkgi_snprintf(
+                text,
+                textlen,
+                "%.2f " PKGI_UTF8_GB,
+                size / 1024.f / 1024.f / 1024.f);
+    }
 }
 
 const char* pkgi_get_config_folder()
@@ -859,18 +885,18 @@ void pkgi_draw_rect(int x, int y, int w, int h, uint32_t color)
 
 void pkgi_draw_text(int x, int y, uint32_t color, const char* text)
 {
-    vita2d_pgf_draw_text(g_font, x, y + 20, VITA_COLOR(color), 1.f, text);
+    vita2d_font_draw_text(g_font, x, y + 20, VITA_COLOR(color), 20.f, text);
 }
 
 int pkgi_text_width(const char* text)
 {
-    return vita2d_pgf_text_width(g_font, 1.f, text);
+    return vita2d_font_text_width(g_font, 20.f, text);
 }
 
 int pkgi_text_height(const char* text)
 {
     PKGI_UNUSED(text);
-    // return vita2d_pgf_text_height(g_font, 1.f, text);
+    // return vita2d_font_text_height(g_font, 1.f, text);
     return 23;
 }
 
