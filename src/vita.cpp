@@ -561,7 +561,7 @@ void pkgi_start(void)
         sceKernelStartThread(power_thread, 0, NULL);
     }
 
-    vita2d_init_advanced(24 * 1024 * 1024);
+    vita2d_init_advanced(16 * 1024 * 1024);
 
     if (pkgi_is_unsafe_mode()) {
         auto const path = fmt::format("{}/font.ttf", pkgi_get_config_folder());
@@ -885,12 +885,12 @@ void pkgi_draw_rect(int x, int y, int w, int h, uint32_t color)
 
 void pkgi_draw_text(int x, int y, uint32_t color, const char* text)
 {
-    vita2d_font_draw_text(g_font, x, y + 20, VITA_COLOR(color), 16.f, text);
+    vita2d_font_draw_text(g_font, x, y + 20, VITA_COLOR(color), 20.f, text);
 }
 
 int pkgi_text_width(const char* text)
 {
-    return vita2d_font_text_width(g_font, 16.f, text);
+    return vita2d_font_text_width(g_font, 20.f, text);
 }
 
 int pkgi_text_height(const char* text)

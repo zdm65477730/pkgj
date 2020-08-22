@@ -680,7 +680,7 @@ void pkgi_do_refresh(void)
 void pkgi_do_head(void)
 {
     char title[256];
-    pkgi_snprintf(title, sizeof(title), "PKGj v%s", PKGI_VERSION);
+    pkgi_snprintf(title, sizeof(title), "PKGj中文版 v%s", PKGI_VERSION);
     pkgi_draw_text(0, 0, PKGI_COLOR_TEXT_HEAD, title);
 
     pkgi_draw_rect(
@@ -996,7 +996,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
                 pkgi_dialog_message(
                         fmt::format(
                                 "已将 {} 添加至LiveArea下载队列",
-                                item.name)
+                                item.titleid)
                                 .c_str());
             }
             else
@@ -1028,7 +1028,7 @@ void pkgi_start_download(Downloader& downloader, const DbItem& item)
     catch (const std::exception& e)
     {
         pkgi_dialog_error(
-                fmt::format("{}安装失败: {}", item.name, e.what())
+                fmt::format("{}安装失败: {}", item.titleid, e.what())
                         .c_str());
     }
 }
@@ -1095,9 +1095,9 @@ int main()
             throw std::runtime_error(fmt::format("无法加载 {}", path));
         }
         else if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/cn1.pvf", 20.0f, nullptr,
+                    "sa0:/data/font/pvf/cn0.pvf", 20.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("无法加载 cn1.pvf");
+            throw std::runtime_error("无法加载 cn0.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);

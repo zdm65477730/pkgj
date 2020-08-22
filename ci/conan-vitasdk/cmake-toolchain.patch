@@ -1,29 +1,32 @@
---- vitasdk/share/vita.cmake	2020-08-16 05:54:03.896960500 +0800
-+++ vitasdk2/share/vita.cmake	2020-08-16 05:52:32.146362900 +0800
-@@ -50,7 +50,7 @@ macro(vita_create_self target source)
- 
-   if(vita_create_self_CONFIG)
-     get_filename_component(fconfig ${vita_create_self_CONFIG} ABSOLUTE)
--    set(VITA_ELF_CREATE_FLAGS "${VITA_ELF_CREATE_FLAGS} -e ${fconfig}")
-+    set(VITA_ELF_CREATE_FLAGS "${VITA_ELF_CREATE_FLAGS} -e \"${fconfig}\"")
+--- vitasdk/share/vita.cmake	2020-01-09 14:10:23.000000000 -0500
++++ vitasdk2/share/vita.cmake	2020-01-09 21:22:57.699001000 -0500
+@@ -84,12 +84,12 @@
+   )
+
+   ## SELF target
+-  add_custom_target(${target}
++  add_custom_target(${target}.dep
+     ALL
+     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${target}
+   )
+   if(TARGET ${source})
+-    add_dependencies(${target} ${source})
++    add_dependencies(${target}.dep ${source})
    endif()
-   if(NOT vita_create_self_UNCOMPRESSED)
-     set(VITA_MAKE_FSELF_FLAGS "${VITA_MAKE_FSELF_FLAGS} -c")
-@@ -141,7 +141,7 @@ macro(vita_create_stubs target-dir sourc
-   ## ELF EXPORT command
-   separate_arguments(VITA_ELF_EXPORT_FLAGS)
-   get_filename_component(fconfig ${config} ABSOLUTE)
--  file(READ ${fconfig} fconfig_content)
-+  file(READ "${fconfig}" fconfig_content)
-   string(REGEX REPLACE ":.+" "" target-lib ${fconfig_content})
-   add_custom_command(OUTPUT ${target_yml}
-     COMMAND ${VITA_ELF_EXPORT} ${kind} ${VITA_ELF_EXPORT_FLAGS} ${sourcepath} ${fconfig} ${target_yml}
-@@ -229,7 +229,7 @@ macro(vita_create_vpk target titleid ebo
-     get_filename_component(fpath ${fname} ABSOLUTE)
-     list(APPEND resources "${fpath}")
-     list(REMOVE_AT vita_create_vpk_FILE 0 1)
--    set(VITA_PACK_VPK_FLAGS "${VITA_PACK_VPK_FLAGS} -a ${fpath}=${fdest}")
-+    set(VITA_PACK_VPK_FLAGS "${VITA_PACK_VPK_FLAGS} -a \"${fpath}\"=${fdest}")
-     list(LENGTH vita_create_vpk_FILE left)
-   endwhile()
- 
+ endmacro(vita_create_self)
+ ##################################################
+@@ -239,12 +239,12 @@
+   )
+
+   ## VPK target
+-  add_custom_target(${target}
++  add_custom_target(${target}.dep
+     ALL
+     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${target}
+   )
+   if(TARGET ${eboot})
+-    add_dependencies(${target} ${eboot})
++    add_dependencies(${target}.dep ${eboot})
+   endif()
+ endmacro(vita_create_vpk)
+ ##################################################
