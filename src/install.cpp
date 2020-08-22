@@ -85,7 +85,7 @@ void pkgi_install(const char* partition, const char* contentid)
     const auto res = scePromoterUtilityPromotePkgWithRif(path, 1);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "调用scePromoterUtilityPromotePkgWithRif失败: {:#08x}\n{}",
+                "调用NoNpDrm函数错误: {:#08x}\n{}",
                 static_cast<uint32_t>(res),
                 static_cast<uint32_t>(res) == 0x80870004
                         ? "请检查NoNpDrm插件安装是否正确"
@@ -103,7 +103,7 @@ void pkgi_install_update(const std::string& partition, const std::string& titlei
     const auto res = scePromoterUtilityPromotePkgWithRif(src.c_str(), 1);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "调用scePromoterUtilityPromotePkgWithRif失败: {:#08x}",
+                "调用NoNpDrm函数错误: {:#08x}",
                 static_cast<uint32_t>(res));
 }
 
@@ -138,6 +138,8 @@ CompPackVersion pkgi_get_comppack_versions(const std::string& partition, const s
         try
         {
             const auto data = pkgi_load(dir + "/base_comppack_version");
+            if(data.empty())
+                return std::string{};
             return std::string(data.begin(), data.end());
         }
         catch (const std::exception& e)
@@ -151,6 +153,8 @@ CompPackVersion pkgi_get_comppack_versions(const std::string& partition, const s
         try
         {
             const auto data = pkgi_load(dir + "/patch_comppack_version");
+            if(data.empty())
+                return std::string{};
             return std::string(data.begin(), data.end());
         }
         catch (const std::exception& e)
@@ -190,7 +194,7 @@ void pkgi_install_psmgame(const char* partition, const char* contentid)
     res = scePromoterUtilityPromoteImport(&promote_args);
     if (res < 0)
         throw formatEx<std::runtime_error>(
-            "调用scePromoterUtilityPromoteImport失败: {:#08x}",
+            "scePromoterUtilityPromoteImport 失败: {:#08x}",
             static_cast<uint32_t>(res));
 }
 

@@ -33,7 +33,7 @@ void pkgi_mkdirs(const char* ppath)
         int err = sceIoMkdir(path.c_str(), 0777);
         if (err < 0 && err != PKGI_ERRNO_EEXIST)
             throw std::runtime_error(fmt::format(
-                    "sceIoMkdir({})失败:\n{:#08x}",
+                    "新建文件夹 ({}) 失败:\n{:#08x}",
                     path.c_str(),
                     static_cast<uint32_t>(err)));
         *ptr = last;
@@ -54,7 +54,9 @@ int64_t pkgi_get_size(const char* path)
 {
     SceIoStat stat;
     int err = sceIoGetstat(path, &stat);
-    if (err < 0)
+    if (err == PKGI_ERRNO_ENOENT)
+        return 0;
+    else if (err < 0)
     {
         LOG("cannot get size of %s, err=0x%08x", path, err);
         return -1;
@@ -103,10 +105,13 @@ void* pkgi_create(const std::string& path)
     SceUID fd = sceIoOpen(
             path.c_str(), SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
     if (fd < 0)
+    {
+        LOG("cannot create %s, err=0x%08x", path, fd);
         throw formatEx<std::runtime_error>(
                 "无法创建文件{}: {:#08x}",
                 path,
                 static_cast<uint32_t>(fd));
+    }
 
     return reinterpret_cast<void*>(fd);
 }
@@ -145,7 +150,7 @@ int64_t pkgi_seek(void* f, uint64_t offset)
     auto const pos = sceIoLseek((intptr_t)f, offset, SCE_SEEK_SET);
     if (pos < 0)
         throw formatEx<std::runtime_error>(
-                "sceIoLseek错误 {:#08x}", static_cast<uint32_t>(pos));
+                "查找错误{:#08x}", static_cast<uint32_t>(pos));
     return pos;
 }
 
@@ -154,7 +159,7 @@ int pkgi_read(void* f, void* buffer, uint32_t size)
     const auto read = sceIoRead((SceUID)(intptr_t)f, buffer, size);
     if (read < 0)
         throw formatEx<std::runtime_error>(
-                "sceIoRead错误 {:#08x}", static_cast<uint32_t>(read));
+                "读取错误{:#08x}", static_cast<uint32_t>(read));
     return read;
 }
 
@@ -163,7 +168,7 @@ int pkgi_write(void* f, const void* buffer, uint32_t size)
     int write = sceIoWrite((SceUID)(intptr_t)f, buffer, size);
     if (write < 0)
         throw formatEx<std::runtime_error>(
-                "sceIoWrite错误 {:#08x}", static_cast<uint32_t>(write));
+                "写入错误{:#08x}", static_cast<uint32_t>(write));
 
     return write;
 }
@@ -182,11 +187,16 @@ void pkgi_close(void* f)
 std::vector<uint8_t> pkgi_load(const std::string& path)
 {
     SceUID fd = sceIoOpen(path.c_str(), SCE_O_RDONLY, 0777);
-    if (fd < 0)
+    if (fd == PKGI_ERRNO_ENOENT)
+        return std::vector<uint8_t>{};
+    else if (fd < 0)
+    {
+        LOG("cannot load %s, err=0x%08x", path, static_cast<uint32_t>(fd));
         throw std::runtime_error(fmt::format(
-                "sceIoOpen({})失败:\n{:#08x}",
+                "打开 ({})  错误:\n{:#08x}",
                 path,
                 static_cast<uint32_t>(fd)));
+    }
 
     BOOST_SCOPE_EXIT_ALL(&)
     {
@@ -201,7 +211,7 @@ std::vector<uint8_t> pkgi_load(const std::string& path)
     const auto read = sceIoRead(fd, data.data(), data.size());
     if (read < 0)
         throw std::runtime_error(fmt::format(
-                "sceIoRead({})失败:\n{:#08x}",
+                "读取 ({}) 错误:\n{:#08x}",
                 path,
                 static_cast<uint32_t>(read)));
 
@@ -216,7 +226,7 @@ void pkgi_save(const std::string& path, const void* data, uint32_t size)
             path.c_str(), SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
     if (fd < 0)
         throw std::runtime_error(fmt::format(
-                "sceIoOpen({})失败:\n{:#08x}",
+                "打开 ({}) 错误:\n{:#08x}",
                 path,
                 static_cast<uint32_t>(fd)));
 
@@ -231,7 +241,7 @@ void pkgi_save(const std::string& path, const void* data, uint32_t size)
         int written = sceIoWrite(fd, data8, size);
         if (written <= 0)
             throw std::runtime_error(fmt::format(
-                    "sceIoWrite({})失败:\n{:#08x}",
+                    "写入 ({}) 错误:\n{:#08x}",
                     path,
                     static_cast<uint32_t>(written)));
         data8 += written;
@@ -246,7 +256,7 @@ std::vector<std::string> pkgi_list_dir_contents(const std::string& path)
         return {};
     if (fd < 0)
         throw formatEx<std::runtime_error>(
-                "sceIoDopen({})失败: {:#08x}",
+                "打开文件夹失败 ({}): {:#08x}",
                 path,
                 static_cast<uint32_t>(fd));
     BOOST_SCOPE_EXIT_ALL(&)
@@ -261,7 +271,7 @@ std::vector<std::string> pkgi_list_dir_contents(const std::string& path)
         const auto ret = sceIoDread(fd, &dirent);
         if (ret < 0)
             throw formatEx<std::runtime_error>(
-                    "sceIoDread({})失败: {:#08x}",
+                    "读取错误 ({}): {:#08x}",
                     path,
                     static_cast<uint32_t>(ret));
         else if (ret == 0)

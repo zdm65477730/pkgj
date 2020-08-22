@@ -9,7 +9,6 @@ extern "C"
 #include "file.hpp"
 #include "http.hpp"
 #include "log.hpp"
-
 #include <fmt/format.h>
 
 #include <boost/scope_exit.hpp>
@@ -45,6 +44,12 @@ extern "C"
 #include <stdio.h>
 #include <string.h>
 
+#ifdef PKGI_ENABLE_LOGGING
+#include "thread.hpp"
+#include <mutex>
+#include <time.h>
+#endif
+
 extern "C"
 {
     int _newlib_heap_size_user = 128 * 1024 * 1024;
@@ -63,7 +68,12 @@ static uint32_t g_button_frame_count;
 static SceUInt64 g_time;
 
 #ifdef PKGI_ENABLE_LOGGING
+static Mutex log_mutex("log_mutex");
+static void* log_file;
+static std::string log_path;
+#if 0
 static int g_log_socket;
+#endif
 #endif
 
 #define ANALOG_CENTER 128
@@ -86,8 +96,15 @@ void pkgi_log(const char* msg, ...)
     va_end(args);
     buffer[len] = '\n';
 
+    if (pkgi_file_exists(log_path))
+    {
+        std::lock_guard<Mutex> lock(log_mutex);
+        pkgi_write(log_file, buffer, len + 1);
+    }
+/*
     sceNetSend(g_log_socket, buffer, len + 1, 0);
-    // sceKernelDelayThread(10);
+    sceKernelDelayThread(10);
+*/
 }
 #endif
 
@@ -194,6 +211,31 @@ int pkgi_is_latin_char(const unsigned int c) {
 static void pkgi_start_debug_log(void)
 {
 #ifdef PKGI_ENABLE_LOGGING
+    char szDate[] = "xxxxx-xxx-xxx-xxxxxxxxx\0";
+    memset(szDate, 0, sizeof(szDate));
+    time_t nSeconds;
+    struct tm *pTM;
+    time(&nSeconds);
+    pTM = localtime(&nSeconds);
+    sprintf(szDate,"%04d-%02d-%02d-%02d%02d%02d",
+                           static_cast<short>(pTM->tm_year + 1900),
+                           static_cast<char>(pTM->tm_mon + 1),
+                           static_cast<char>(pTM->tm_mday),
+                           static_cast<char>(pTM->tm_hour),
+                           static_cast<char>(pTM->tm_min),
+                           static_cast<char>(pTM->tm_sec));
+    log_path = fmt::format("{}/{}.log", pkgi_get_config_folder(), szDate);
+
+    SceUID fd = -1;
+    fd = sceIoOpen(log_path.c_str(), SCE_O_WRONLY | SCE_O_CREAT | SCE_O_APPEND, 0777);
+    if (fd < 0)
+    {
+        throw formatEx<std::runtime_error>("无法打开文件{}: {:#08x}", log_path, static_cast<uint32_t>(fd));
+    }
+    log_file = reinterpret_cast<void*>(fd);
+    LOG("# log file opened %d", fd);
+    LOG("debug logging socket initialized");
+/*
     g_log_socket = sceNetSocket(
             "log_socket",
             SCE_NET_AF_INET,
@@ -207,13 +249,21 @@ static void pkgi_start_debug_log(void)
 
     sceNetConnect(g_log_socket, (SceNetSockaddr*)&addr, sizeof(addr));
     LOG("debug logging socket initialized");
+*/
 #endif
 }
 
 static void pkgi_stop_debug_log(void)
 {
 #ifdef PKGI_ENABLE_LOGGING
-    sceNetSocketClose(g_log_socket);
+    if (log_file)
+    {
+        LOG("# log file closing %d", (SceUID)(intptr_t)log_file);
+        pkgi_close(log_file);
+        log_file = nullptr;
+    }
+
+    //sceNetSocketClose(g_log_socket);
 #endif
 }
 
@@ -569,8 +619,8 @@ void pkgi_start(void)
             g_font = vita2d_load_font_file(path.c_str());
     }
 
-    if (!g_font) 
-        g_font = vita2d_load_font_file("sa0:/data/font/pvf/cn0.pvf");
+    if (!g_font)
+        g_font = vita2d_load_font_file("sa0:/data/font/pvf/cn1.pvf");
     g_time = sceKernelGetProcessTimeWide();
 
     sqlite3_rw_init();
@@ -685,35 +735,6 @@ uint64_t pkgi_get_free_space(const char* requested_partition)
     return info.free_size;
 }
 
-void pkgi_friendly_size(char* text, uint32_t textlen, int64_t size)
-{
-    if (size <= 0)
-    {
-        text[0] = 0;
-    }
-    else if (size < 1000LL)
-    {
-        pkgi_snprintf(text, textlen, "%u " PKGI_UTF8_B, (uint32_t)size);
-    }
-    else if (size < 1000LL * 1000)
-    {
-        pkgi_snprintf(text, textlen, "%.2f " PKGI_UTF8_KB, size / 1024.f);
-    }
-    else if (size < 1000LL * 1000 * 1000)
-    {
-        pkgi_snprintf(
-                text, textlen, "%.2f " PKGI_UTF8_MB, size / 1024.f / 1024.f);
-    }
-    else
-    {
-        pkgi_snprintf(
-                text,
-                textlen,
-                "%.2f " PKGI_UTF8_GB,
-                size / 1024.f / 1024.f / 1024.f);
-    }
-}
-
 const char* pkgi_get_config_folder()
 {
     if (0)
@@ -721,9 +742,9 @@ const char* pkgi_get_config_folder()
     }
 #define CHECK_FOLDER(f) else if (pkgi_file_exists(f "/config.txt")) return f
     CHECK_FOLDER("ur0:pkgj");
+    CHECK_FOLDER("imc0:pkgj");
+    CHECK_FOLDER("uma0:pkgj");
     CHECK_FOLDER("ux0:pkgj");
-    CHECK_FOLDER("ur0:pkgi");
-    CHECK_FOLDER("ux0:pkgi");
 #undef CHECK_FOLDER
     else
     {
@@ -746,7 +767,7 @@ void pkgi_delete_dir(const std::string& path)
 
     if (dfd < 0)
         throw formatEx<std::runtime_error>(
-                "sceIoDopen({})失败:\n{:#08x}",
+                "打开失败 ({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(dfd));
 
@@ -776,7 +797,7 @@ void pkgi_delete_dir(const std::string& path)
             const auto ret = sceIoRemove(new_path.c_str());
             if (ret < 0)
                 throw formatEx<std::runtime_error>(
-                        "sceIoRemove({})失败:\n{:#08x}",
+                        "删除失败 ({}):\n{:#08x}",
                         new_path,
                         static_cast<uint32_t>(ret));
         }
@@ -788,7 +809,7 @@ void pkgi_delete_dir(const std::string& path)
     res = sceIoRmdir(path.c_str());
     if (res < 0)
         throw formatEx<std::runtime_error>(
-                "sceIoRmdir({})失败:\n{:#08x}",
+                "文件夹删除失败 ({}):\n{:#08x}",
                 path,
                 static_cast<uint32_t>(res));
 }
@@ -885,12 +906,12 @@ void pkgi_draw_rect(int x, int y, int w, int h, uint32_t color)
 
 void pkgi_draw_text(int x, int y, uint32_t color, const char* text)
 {
-    vita2d_font_draw_text(g_font, x, y + 20, VITA_COLOR(color), 20.f, text);
+    vita2d_font_draw_text(g_font, x, y + 18, VITA_COLOR(color), 18.f, text);
 }
 
 int pkgi_text_width(const char* text)
 {
-    return vita2d_font_text_width(g_font, 20.f, text);
+    return vita2d_font_text_width(g_font, 18.f, text);
 }
 
 int pkgi_text_height(const char* text)
@@ -908,7 +929,7 @@ std::string pkgi_get_system_version()
         const auto res = _vshSblGetSystemSwVersion(&info);
         if (res < 0)
             throw std::runtime_error(fmt::format(
-                    "sceKernelGetSystemSwVersion失败: {:#08x}",
+                    "获取系统软件版本失败: {:#08x}",
                     static_cast<uint32_t>(res)));
         return std::string(info.versionString);
     }();

@@ -278,7 +278,11 @@ void TitleDatabase::update(Mode mode, Http* http, const std::string& update_url)
     BOOST_SCOPE_EXIT_ALL(&)
     {
         if (item_file)
+        {
             pkgi_close(item_file);
+            item_file = nullptr;
+        }
+        return;
     };
 
     const auto filepath =
@@ -294,11 +298,20 @@ void TitleDatabase::update(Mode mode, Http* http, const std::string& update_url)
     http->start(update_url, 0, true);
 
     db_total = http->get_length();
-    if (last == db_total) return; // skip when size same
+    if (last == db_total) // skip when size same
+    {
+        LOGF("skip update: {} when size same", filepath);
+        http->close();
+        if (item_file)
+        {
+            pkgi_close(item_file);
+            item_file = nullptr;
+        }
+        return;
+    }
 
     http->close();
     http->start(update_url, 0);
-    
 
     for (;;)
     {
@@ -318,8 +331,11 @@ void TitleDatabase::update(Mode mode, Http* http, const std::string& update_url)
                 "TSV文件不完整, 请检查网络连接是否异常, 然后"
                 "重试");
 
-    pkgi_close(item_file);
-    item_file = nullptr;
+    if (item_file)
+    {
+        pkgi_close(item_file);
+        item_file = nullptr;
+    }
 
     pkgi_rename(tmppath, filepath);
 

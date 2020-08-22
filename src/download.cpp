@@ -805,6 +805,7 @@ void Download::download_file_content_to_edat(uint64_t item_size)
 
     uint32_t key_index = get32le(key_header + 4);
     uint32_t drm_type = get32le(key_header + 8);
+
     if (key_index != 1 || drm_type != 1)
         throw DownloadError("不支持的EDAT文件, key/drm类型错误");
 
@@ -823,6 +824,7 @@ void Download::download_file_content_to_edat(uint64_t item_size)
         throw DownloadError("不支持的EDAT文件, 数据/偏移量错误");
 
     init_psp_decrypt(&psp_key, psp_iv, 0, mac, key_header, 0x70, 0x30);
+
     static constexpr uint32_t block_size = 0x10;
     uint32_t block_count = ((data_size + (block_size - 1)) / block_size);
 
@@ -853,7 +855,6 @@ void Download::download_file_content_to_edat(uint64_t item_size)
 
     if (!pkgi_write(item_file, data.data(), data.size()))
         throw DownloadError(fmt::format("无法写入至 %s", item_path));
-
     skip_to_file_offset(item_size);
 }
 
