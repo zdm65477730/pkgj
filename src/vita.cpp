@@ -57,10 +57,6 @@ extern "C"
     extern SceUID _vshKernelSearchModuleByName(const char *name, SceUInt64 *unk);
 }
 
-static Mutex log_mutex("log_mutex");
-static void* log_file;
-static std::string log_path;
-
 static vita2d_font* g_font;
 
 static SceKernelLwMutexWork g_dialog_lock;
