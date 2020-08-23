@@ -50,7 +50,7 @@ void VitaHttp::start(const std::string& url, uint64_t offset, bool head)
 
     LOG("http get");
 
-    pkgi_http* http = NULL;
+    pkgi_http* http = nullptr;
     for (size_t i = 0; i < 4; i++)
     {
         if (g_http[i].used == 0)

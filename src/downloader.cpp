@@ -84,6 +84,7 @@ std::optional<DownloadItem> Downloader::get_current_download()
 
 std::tuple<uint64_t, uint64_t> Downloader::get_current_download_progress()
 {
+    ScopeLock _(_cond.get_mutex());
     return {_download_offset.load(), _download_size.load()};
 }
 
