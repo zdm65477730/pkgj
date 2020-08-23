@@ -14,6 +14,7 @@ extern "C"
 #include <boost/scope_exit.hpp>
 
 #include <string>
+#include <mutex>
 
 #include <vita2d.h>
 
@@ -55,6 +56,10 @@ extern "C"
     int _newlib_heap_size_user = 128 * 1024 * 1024;
     extern SceUID _vshKernelSearchModuleByName(const char *name, SceUInt64 *unk);
 }
+
+static Mutex log_mutex("log_mutex");
+static void* log_file;
+static std::string log_path;
 
 static vita2d_font* g_font;
 
