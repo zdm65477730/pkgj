@@ -131,18 +131,18 @@ puff.h and puff.c files are under [zlib][] license.
 [NoPsmDrm]: https://github.com/frangarcj/NoPsmDrm/
 [zrif_online_converter]: https://rawgit.com/mmozeiko/pkg2zip/online/zrif.html
 [pkg_dec]: https://github.com/weaknespase/PkgDecrypt
-[pkg_releases]: https://github.com/dragonflylee/pkgj/releases
+[pkg_releases]: https://github.com/zdm65477730/pkgj/releases
 [vitasdk]: https://vitasdk.org/
 [libvita2d]: https://github.com/xerpi/libvita2d
 [PSDLE]: https://repod.github.io/psdle/
 [socat]: http://www.dest-unreach.org/socat/
 [zlib]: https://www.zlib.net/zlib_license.html
-[pkgj_downloads]: https://github.com/dragonflylee/pkgj/releases
-[pkgj_latest]: https://github.com/dragonflylee/pkgj/releases/latest
-[pkgj_license]: https://github.com/dragonflylee/pkgj/blob/master/LICENSE
-[img_downloads]: https://img.shields.io/github/downloads/dragonflylee/pkgj/total.svg?maxAge=3600
-[img_latest]: https://img.shields.io/github/release/dragonflylee/pkgj.svg?maxAge=3600
-[img_license]: https://img.shields.io/github/license/dragonflylee/pkgj.svg?maxAge=2592000
+[pkgj_downloads]: https://github.com/zdm65477730/pkgj/releases
+[pkgj_latest]: https://github.com/zdm65477730/pkgj/releases/latest
+[pkgj_license]: https://github.com/zdm65477730/pkgj/blob/master/LICENSE
+[img_downloads]: https://img.shields.io/github/downloads/zdm65477730/pkgj/total.svg?maxAge=3600
+[img_latest]: https://img.shields.io/github/release/zdm65477730/pkgj.svg?maxAge=3600
+[img_license]: https://img.shields.io/github/license/zdm65477730/pkgj.svg?maxAge=2592000
 
 # 捐赠
 以下是原作者的BitCoin钱包代码
