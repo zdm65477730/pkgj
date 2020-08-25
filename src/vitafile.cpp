@@ -105,13 +105,10 @@ void* pkgi_create(const std::string& path)
     SceUID fd = sceIoOpen(
             path.c_str(), SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0777);
     if (fd < 0)
-    {
-        LOG("cannot create %s, err=0x%08x", path, fd);
         throw formatEx<std::runtime_error>(
                 "无法创建文件{}: {:#08x}",
                 path,
                 static_cast<uint32_t>(fd));
-    }
 
     return reinterpret_cast<void*>(fd);
 }
@@ -191,7 +188,6 @@ std::vector<uint8_t> pkgi_load(const std::string& path)
         return std::vector<uint8_t>{};
     else if (fd < 0)
     {
-        LOG("cannot load %s, err=0x%08x", path, static_cast<uint32_t>(fd));
         throw std::runtime_error(fmt::format(
                 "打开 ({})  错误:\n{:#08x}",
                 path,

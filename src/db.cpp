@@ -282,7 +282,6 @@ void TitleDatabase::update(Mode mode, Http* http, const std::string& update_url)
             pkgi_close(item_file);
             item_file = nullptr;
         }
-        return;
     };
 
     const auto filepath =

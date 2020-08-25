@@ -201,7 +201,6 @@ void pkgi_refresh_thread(void)
                         mode_count);
             }
             auto const http = std::make_unique<VitaHttp>();
-            LOG("updating");
             db->update(mode, http.get(), url);
         }
         int plugin_present = pkgi_is_module_present("ref00d") ||
@@ -849,12 +848,12 @@ void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(text, sizeof(text), "暂无下载");
 
     pkgi_draw_text(0, bottom_y, PKGI_COLOR_TEXT_TAIL, text);
-
+    LOG("download: %s", text);
     const auto second_line = bottom_y + font_height + PKGI_MAIN_ROW_PADDING;
 
     uint32_t count = db->count();
     uint32_t total = db->total();
-
+    LOG("count: %u, total: %u", count, total);
     if (count == total)
     {
         pkgi_snprintf(text, sizeof(text), "计数: %u", count);
@@ -864,7 +863,7 @@ void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(text, sizeof(text), "计数: %u (%u)", count, total);
     }
     pkgi_draw_text(0, second_line, PKGI_COLOR_TEXT_TAIL, text);
-
+    LOG("count: %s", text);
     char size[64];
     pkgi_friendly_size(
                 size,
@@ -880,7 +879,7 @@ void pkgi_do_tail(Downloader& downloader)
             second_line,
             PKGI_COLOR_TEXT_TAIL,
             free);
-
+    LOG("free: %s", free);
     int left = pkgi_text_width(text) + PKGI_MAIN_TEXT_PADDING;
     int right = rightw + PKGI_MAIN_TEXT_PADDING;
 
@@ -923,6 +922,7 @@ void pkgi_do_tail(Downloader& downloader)
             second_line,
             PKGI_COLOR_TEXT_TAIL,
             bottom_text.c_str());
+    LOG("bottom_text: %s", bottom_text.c_str());
     pkgi_clip_remove();
 }
 
@@ -1118,14 +1118,14 @@ int main()
 #endif
         auto const path = fmt::format("{}/font.ttf", pkgi_get_config_folder());
         if (pkgi_file_exists(path)) {
-            if (!io.Fonts->AddFontFromFileTTF(path.c_str(), 18.0f, nullptr,
+            if (!io.Fonts->AddFontFromFileTTF(path.c_str(), 20.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
             throw std::runtime_error(fmt::format("无法加载 {}", path));
         }
         else if (!io.Fonts->AddFontFromFileTTF(
-                    "sa0:/data/font/pvf/cn1.pvf", 18.0f, nullptr,
+                    "sa0:/data/font/pvf/cn0.pvf", 20.0f, nullptr,
                     io.Fonts->GetGlyphRangesChineseSimplifiedCommon()))
-            throw std::runtime_error("无法加载 cn1.pvf");
+            throw std::runtime_error("无法加载 cn0.pvf");
         io.Fonts->GetTexDataAsRGBA32((uint8_t**)&pixels, &width, &height);
         vita2d_texture* font_texture =
                 vita2d_create_empty_texture(width, height);

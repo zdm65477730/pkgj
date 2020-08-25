@@ -26,9 +26,14 @@ set(VITA_TITLEID  "PKGJ00000")
 set(VITA_VERSION  "0.58")
 
 option(PKGI_ENABLE_LOGGING "enables debug logging over udp multicast" OFF)
+option(PKGI_ENABLE_SERIAL_LOGGING "enables debug logging over serial port" OFF)
 
 if(PKGI_ENABLE_LOGGING)
   add_definitions(-DPKGI_ENABLE_LOGGING)
+endif()
+
+if(PKGI_ENABLE_SERIAL_LOGGING)
+  add_definitions(-DPKGI_ENABLE_SERIAL_LOGGING)
 endif()
 
 add_definitions(-DPKGI_VERSION="${VITA_VERSION}" -D_GNU_SOURCE)

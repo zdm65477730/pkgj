@@ -22,7 +22,7 @@ export CXX=g++-7
 mkdir build
 cd build
 pipenv run conan install ../.. --build missing -pr vita -s build_type=RelWithDebInfo
-cmake -GNinja ../.. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPKGI_ENABLE_LOGGING=ON
+cmake -GNinja ../.. -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPKGI_ENABLE_SERIAL_LOGGING=ON
 ninja
 cp pkgj pkgj.elf
 cd ../..

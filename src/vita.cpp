@@ -14,7 +14,6 @@ extern "C"
 #include <boost/scope_exit.hpp>
 
 #include <string>
-#include <mutex>
 
 #include <vita2d.h>
 
@@ -92,10 +91,10 @@ void pkgi_log(const char* msg, ...)
 
     va_list args;
     va_start(args, msg);
-    // TODO: why sceClibVsnprintf doesn't work here?
-    int len = vsnprintf(buffer, sizeof(buffer) - 1, msg, args);
+    int len = vsnprintf(buffer, sizeof(buffer) - 2, msg, args);
     va_end(args);
-    buffer[len] = '\n';
+    buffer[len] = 0;
+    buffer[len+1] = '\n';
 
     if (pkgi_file_exists(log_path))
     {
@@ -235,7 +234,6 @@ static void pkgi_start_debug_log(void)
     }
     log_file = reinterpret_cast<void*>(fd);
     LOG("# log file opened %d", fd);
-    LOG("debug logging socket initialized");
 /*
     g_log_socket = sceNetSocket(
             "log_socket",
@@ -251,6 +249,8 @@ static void pkgi_start_debug_log(void)
     sceNetConnect(g_log_socket, (SceNetSockaddr*)&addr, sizeof(addr));
     LOG("debug logging socket initialized");
 */
+#elif defined PKGI_ENABLE_SERIAL_LOGGING
+    LOG("debug serial logging initialized");
 #endif
 }
 
@@ -265,6 +265,8 @@ static void pkgi_stop_debug_log(void)
     }
 
     //sceNetSocketClose(g_log_socket);
+#elif defined PKGI_ENABLE_SERIAL_LOGGING
+    LOG("debug serial logging finished");
 #endif
 }
 
@@ -621,7 +623,7 @@ void pkgi_start(void)
     }
 
     if (!g_font)
-        g_font = vita2d_load_font_file("sa0:/data/font/pvf/cn1.pvf");
+        g_font = vita2d_load_font_file("sa0:/data/font/pvf/cn0.pvf");
     g_time = sceKernelGetProcessTimeWide();
 
     sqlite3_rw_init();
@@ -743,8 +745,6 @@ const char* pkgi_get_config_folder()
     }
 #define CHECK_FOLDER(f) else if (pkgi_file_exists(f "/config.txt")) return f
     CHECK_FOLDER("ur0:pkgj");
-    CHECK_FOLDER("imc0:pkgj");
-    CHECK_FOLDER("uma0:pkgj");
     CHECK_FOLDER("ux0:pkgj");
 #undef CHECK_FOLDER
     else
@@ -907,12 +907,12 @@ void pkgi_draw_rect(int x, int y, int w, int h, uint32_t color)
 
 void pkgi_draw_text(int x, int y, uint32_t color, const char* text)
 {
-    vita2d_font_draw_text(g_font, x, y + 18, VITA_COLOR(color), 18.f, text);
+    vita2d_font_draw_text(g_font, x, y + 20, VITA_COLOR(color), 20.f, text);
 }
 
 int pkgi_text_width(const char* text)
 {
-    return vita2d_font_text_width(g_font, 18.f, text);
+    return vita2d_font_text_width(g_font, 20.f, text);
 }
 
 int pkgi_text_height(const char* text)
