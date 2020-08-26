@@ -2,12 +2,14 @@
 
 #include "http.hpp"
 #include "sqlite.hpp"
+#include "thread.hpp"
 
 #include <array>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include <cstdint>
 
@@ -28,6 +30,7 @@ public:
 
 private:
     static constexpr auto MAX_DB_SIZE = 4 * 1024 * 1024;
+    Mutex db_mutex{"db_mutex"};
 
     std::string _dbPath;
 

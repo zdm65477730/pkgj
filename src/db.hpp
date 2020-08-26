@@ -1,12 +1,14 @@
 #pragma once
 
 #include "http.hpp"
+#include "thread.hpp"
 
 #include <array>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include <cstdint>
 
@@ -116,7 +118,8 @@ public:
     DbItem* get_by_content(const char* content);
 
 private:
-    static constexpr auto MAX_DB_ITEMS = 8192;
+    static constexpr auto MAX_DB_ITEMS = 10240;
+    Mutex db_mutex{"db_mutex"};
 
     std::string _dbPath;
     uint32_t db_total;

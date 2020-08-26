@@ -232,8 +232,11 @@ void pkgi_refresh_thread(void)
                         http.get(), config.comppack_url + "entries_patch.txt");
             }
         }
-        first_item = 0;
-        selected_item = 0;
+        {
+            std::lock_guard<Mutex> lock(refresh_mutex);
+            first_item = 0;
+            selected_item = 0;
+        }
         configure_db(db.get(), NULL, &config);
     }
     catch (const std::exception& e)
@@ -333,6 +336,7 @@ void pkgi_set_mode(Mode set_mode)
 {
     mode = set_mode;
     pkgi_reload();
+    std::lock_guard<Mutex> lock(refresh_mutex);
     first_item = 0;
     selected_item = 0;
 }
@@ -938,6 +942,7 @@ void pkgi_do_error(void)
 void reposition(void)
 {
     uint32_t count = db->count();
+    std::lock_guard<Mutex> lock(refresh_mutex);
     if (first_item + selected_item < count)
     {
         return;
@@ -979,6 +984,7 @@ void pkgi_open_db()
 {
     try
     {
+        std::lock_guard<Mutex> lock(refresh_mutex);
         first_item = 0;
         selected_item = 0;
         db = std::make_unique<TitleDatabase>(pkgi_get_config_folder());

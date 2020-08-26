@@ -273,6 +273,7 @@ const char* get_or_empty(
 
 void TitleDatabase::update(Mode mode, Http* http, const std::string& update_url)
 {
+    std::lock_guard<Mutex> lock(db_mutex);
     const auto tmppath = _dbPath + "/dbtmp.tsv";
     auto item_file = pkgi_create(tmppath);
     BOOST_SCOPE_EXIT_ALL(&)
@@ -412,6 +413,7 @@ void TitleDatabase::reload(
         const std::string& search,
         const std::set<std::string>& installed_games)
 {
+    std::lock_guard<Mutex> lock(db_mutex);
     const auto filter_by_region =
             (region_filter & DbFilterAllRegions) != DbFilterAllRegions;
     const auto regions = filter_to_vector(region_filter);
@@ -528,27 +530,32 @@ void TitleDatabase::reload(
 
 void TitleDatabase::get_update_status(uint32_t* updated, uint32_t* total)
 {
+    std::lock_guard<Mutex> lock(db_mutex);
     *updated = db_size;
     *total = db_total;
 }
 
 uint32_t TitleDatabase::count()
 {
+    std::lock_guard<Mutex> lock(db_mutex);
     return db.size();
 }
 
 uint32_t TitleDatabase::total()
 {
+    std::lock_guard<Mutex> lock(db_mutex);
     return _title_count;
 }
 
 DbItem* TitleDatabase::get(uint32_t index)
 {
+    std::lock_guard<Mutex> lock(db_mutex);
     return index < db.size() ? &db[index] : NULL;
 }
 
 DbItem* TitleDatabase::get_by_content(const char* content)
 {
+    std::lock_guard<Mutex> lock(db_mutex);
     for (size_t i = 0; i < db.size(); ++i)
         if (db[i].content == content)
             return &db[i];

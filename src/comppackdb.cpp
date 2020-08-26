@@ -24,6 +24,7 @@ CompPackDatabase::CompPackDatabase(std::string const& dbPath) : _dbPath(dbPath)
 void CompPackDatabase::reopen()
 {
     LOG("opening database %s", _dbPath.c_str());
+    std::lock_guard<Mutex> lock(db_mutex);
     sqlite3* db;
     SQLITE_CHECK(sqlite3_open(_dbPath.c_str(), &db), "can't open database");
     _sqliteDb.reset(db);
@@ -102,6 +103,7 @@ std::vector<const char*> pkgi_split_row(char** pptr, const char* end)
 
 void CompPackDatabase::parse_entries(std::string& db_data)
 {
+    std::lock_guard<Mutex> lock(db_mutex);
     SQLITE_EXEC(_sqliteDb, "BEGIN", "can't begin transaction");
 
     BOOST_SCOPE_EXIT_ALL(&)
@@ -229,7 +231,7 @@ std::optional<CompPackDatabase::Item> CompPackDatabase::get(
     reopen();
 
     LOG("reloading database");
-
+    std::lock_guard<Mutex> lock(db_mutex);
     sqlite3_stmt* stmt;
     SQLITE_CHECK(
             sqlite3_prepare_v2(
