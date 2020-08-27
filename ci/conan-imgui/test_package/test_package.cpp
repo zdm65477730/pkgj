@@ -22,6 +22,7 @@ int main(int, char**)
         ImGui::Text("Hello, world!");
         ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::ShowDemoWindow(NULL);
 
         ImGui::Render();
     }

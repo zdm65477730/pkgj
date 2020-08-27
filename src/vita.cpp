@@ -917,9 +917,9 @@ int pkgi_text_width(const char* text)
 
 int pkgi_text_height(const char* text)
 {
-    PKGI_UNUSED(text);
-    // return vita2d_font_text_height(g_font, 1.f, text);
-    return 23;
+    //PKGI_UNUSED(text);
+    return vita2d_font_text_height(g_font, 18.f, text);
+    //return 23;
 }
 
 std::string pkgi_get_system_version()

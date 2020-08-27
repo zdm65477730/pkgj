@@ -852,12 +852,12 @@ void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(text, sizeof(text), "暂无下载");
 
     pkgi_draw_text(0, bottom_y, PKGI_COLOR_TEXT_TAIL, text);
-    LOG("download: %s", text);
+
     const auto second_line = bottom_y + font_height + PKGI_MAIN_ROW_PADDING;
 
     uint32_t count = db->count();
     uint32_t total = db->total();
-    LOG("count: %u, total: %u", count, total);
+
     if (count == total)
     {
         pkgi_snprintf(text, sizeof(text), "计数: %u", count);
@@ -867,7 +867,7 @@ void pkgi_do_tail(Downloader& downloader)
         pkgi_snprintf(text, sizeof(text), "计数: %u (%u)", count, total);
     }
     pkgi_draw_text(0, second_line, PKGI_COLOR_TEXT_TAIL, text);
-    LOG("count: %s", text);
+
     char size[64];
     pkgi_friendly_size(
                 size,
@@ -883,7 +883,7 @@ void pkgi_do_tail(Downloader& downloader)
             second_line,
             PKGI_COLOR_TEXT_TAIL,
             free);
-    LOG("free: %s", free);
+
     int left = pkgi_text_width(text) + PKGI_MAIN_TEXT_PADDING;
     int right = rightw + PKGI_MAIN_TEXT_PADDING;
 
@@ -926,7 +926,7 @@ void pkgi_do_tail(Downloader& downloader)
             second_line,
             PKGI_COLOR_TEXT_TAIL,
             bottom_text.c_str());
-    LOG("bottom_text: %s", bottom_text.c_str());
+
     pkgi_clip_remove();
 }
 

@@ -15,10 +15,10 @@
 #ifdef PKGI_ENABLE_SERIAL_LOGGING
 #include <time.h>
 #include <sys/time.h>
-#define DATE(date) \
-    char date[] = "xxxxxx-xxx-xxx xxx:xxx:xxx.xxxxxx\0"; memset(date, 0, sizeof(date)); \
+#define PRELOG(s) \
+    char s[256]; memset(s, 0, sizeof(s)); \
     struct timeval tv; struct timezone tz; struct tm *p; gettimeofday(&tv, &tz); p = localtime(&tv.tv_sec); \
-    sprintf(date,"%04d-%02d-%02d %02d:%02d:%02d.%03d", static_cast<short>(p->tm_year + 1900), static_cast<char>(p->tm_mon + 1), static_cast<char>(p->tm_mday), static_cast<char>(p->tm_hour), static_cast<char>(p->tm_min), static_cast<char>(p->tm_sec), static_cast<short>(tv.tv_usec/1000));
+    sprintf(s,"%04d-%02d-%02d %02d:%02d:%02d.%03d %s:%d ", static_cast<short>(p->tm_year + 1900), static_cast<char>(p->tm_mon + 1), static_cast<char>(p->tm_mday), static_cast<char>(p->tm_hour), static_cast<char>(p->tm_min), static_cast<char>(p->tm_sec), static_cast<short>(tv.tv_usec/1000), __BASE_FILE__, __LINE__);
 #endif
 
 #ifdef PKGI_ENABLE_LOGGING
@@ -36,13 +36,13 @@
 #define LOG(msg, ...)                 \
     do                                \
     {                                 \
-        DATE(szDate)                  \
+        PRELOG(szDate)                  \
         printf("%s ", szDate); printf(msg"\n\r", ##__VA_ARGS__); \
     } while (0)
 #define LOGF(msg, ...)                                     \
     do                                                     \
     {                                                      \
-        DATE(szDate)                                       \
+        PRELOG(szDate)                                       \
         printf("%s %s\n\r", szDate, fmt::format(msg, ##__VA_ARGS__).c_str()); \
     } while (0)
 #else
