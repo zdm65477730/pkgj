@@ -90,7 +90,7 @@ void update_thread()
 
         LOGF("last version is {}", last_version);
 
-        if (last_version.compare(PKGI_VERSION))
+        if (std::stof(last_version) > std::stof(PKGI_VERSION))
         {
             LOG("new version available");
 
